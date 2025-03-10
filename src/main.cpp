@@ -10,6 +10,8 @@
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
+#pragma region VALIDATION_CALLBACK
+
 const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"  //
 };
@@ -60,6 +62,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance,
     func(instance, debugMessenger, pAllocator);
   }
 }
+#pragma endregion VALIDATION_CALLBACK
 
 class HelloTriangleApplication {
  public:
@@ -92,6 +95,8 @@ class HelloTriangleApplication {
     }
   }
   void cleanup() {
+    vkDestroyDevice(device, nullptr);
+
     if (enableValidationLayers) {
       DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
     }
@@ -103,6 +108,37 @@ class HelloTriangleApplication {
   }
 
 #pragma region DEVICE
+  void createLogicalDevice() {
+    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+    VkDeviceQueueCreateInfo queueCreateInfo{};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+    queueCreateInfo.queueCount = 1;  // yo dawg, we only need one queue
+
+    float queuePriority = 1.0f;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+
+    VkPhysicalDeviceFeatures deviceFeatures{};
+
+    VkDeviceCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.pQueueCreateInfos = &queueCreateInfo;
+    createInfo.queueCreateInfoCount = 1;
+    createInfo.pEnabledFeatures = &deviceFeatures;
+    createInfo.enabledExtensionCount = 0;
+
+    // get device queue handle
+    vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+
+    if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) !=
+        VK_SUCCESS) {
+      throw std::runtime_error("failed to create logical device!");
+    }
+  }
+#pragma endregion DEVICE
+
+#pragma region PHYSICAL_DEVICE
   bool isDeviceSuitable(VkPhysicalDevice device) {
     VkPhysicalDeviceProperties deviceProperties;
     vkGetPhysicalDeviceProperties(device, &deviceProperties);
@@ -172,7 +208,7 @@ class HelloTriangleApplication {
     return indices;
   }
 
-#pragma endregion DEVICE
+#pragma endregion PHYSICAL_DEVICE
 
 #pragma region VALIDATION
 
@@ -308,11 +344,17 @@ class HelloTriangleApplication {
   }
 #pragma endregion INSTANCE
 
+  // MEMBERS
+
   GLFWwindow* window = nullptr;
 
   VkInstance instance{};
   VkDebugUtilsMessengerEXT debugMessenger;
+
   VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+
+  VkDevice device;
+  VkQueue graphicsQueue;
 };
 
 int main() {
