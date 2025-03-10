@@ -1,53 +1,57 @@
-#include <vulkan/vulkan.h>
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+#include <cstdlib>
 #include <iostream>
+#include <stdexcept>
+
+class HelloTriangleApplication {
+  const uint32_t WIDTH = 800;
+  const uint32_t HEIGHT = 600;
+
+ public:
+  void run() {
+    initWindow();
+    initVulkan();
+    mainLoop();
+    cleanup();
+  }
+
+ private:
+  void initWindow() {
+    glfwInit();
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+    window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+  }
+
+  void initVulkan() {}
+
+  void mainLoop() {
+    while (!glfwWindowShouldClose(window)) {
+      glfwPollEvents();
+    }
+  }
+  void cleanup() {
+    glfwDestroyWindow(window);
+
+    glfwTerminate();
+  }
+
+  GLFWwindow* window;
+};
 
 int main() {
-    // Initialize GLFW
-    if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
-        return -1;
-    }
+  HelloTriangleApplication app;
 
-    // Create a windowed mode window and its OpenGL context
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Vulkan Tutorial", nullptr, nullptr);
-    if (!window) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
+  try {
+    app.run();
+  } catch (const std::exception& e) {
+    std::cerr << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
 
-    // Make the window's context current
-    glfwMakeContextCurrent(window);
-
-    // Initialize Vulkan
-    VkInstance instance;
-    VkApplicationInfo appInfo = {};
-    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "Vulkan Tutorial";
-    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName = "No Engine";
-    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
-
-    VkInstanceCreateInfo createInfo = {};
-    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    createInfo.pApplicationInfo = &appInfo;
-
-    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
-        std::cerr << "Failed to create Vulkan instance" << std::endl;
-        return -1;
-    }
-
-    // Main loop
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-    }
-
-    // Cleanup
-    vkDestroyInstance(instance, nullptr);
-    glfwDestroyWindow(window);
-    glfwTerminate();
-
-    return 0;
+  return EXIT_SUCCESS;
 }
