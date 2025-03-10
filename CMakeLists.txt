@@ -1,0 +1,37 @@
+project(vulkan-tutorial)
+cmake_minimum_required(VERSION 3.10)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(Vulkan REQUIRED)
+
+include_directories(${Vulkan_INCLUDE_DIRS})
+
+################## Dependencies ##################
+# GLFW
+set(GLFW_PATH ${PROJECT_SOURCE_DIR}/ext/glfw-3.4.bin.WIN64)
+set(GLFW_INCLUDE ${GLFW_PATH}/include)
+set(GLFW_LIB_DIR ${GLFW_PATH}/lib-vc2022)
+################## Dependencies ##################
+
+
+
+file(GLOB SOURCES
+    src/*.cpp
+    src/shaders/*.vert
+    src/shaders/*.frag
+)
+
+add_executable(vulkan-tutorial ${SOURCES})
+
+target_include_directories(vulkan-tutorial PUBLIC
+    ${GLFW_INCLUDE}
+)
+
+
+target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_LIB_DIR})
+target_link_libraries(vulkan-tutorial
+    glfw3
+    ${Vulkan_LIBRARIES}
+)
