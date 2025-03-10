@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -26,11 +27,12 @@ debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
               void* pUserData) {
   if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
     // Message is important enough to show
-    std::cerr << "[ERROR] validation layer: " << pCallbackData->pMessage
-              << std::endl;
+    std::cerr << "[VALIDATION ERROR] validation layer: "
+              << pCallbackData->pMessage << std::endl;
   } else {
     // Message is not important enough to show
-    std::cout << "validation layer: " << pCallbackData->pMessage << std::endl;
+    // std::cout << "validation layer: " << pCallbackData->pMessage <<
+    // std::endl;
   }
 
   return VK_FALSE;
@@ -81,6 +83,7 @@ class HelloTriangleApplication {
   void initVulkan() {
     createInstance();
     setupDebugMessenger();
+    pickPhysicalDevice();
   }
 
   void mainLoop() {
@@ -98,6 +101,80 @@ class HelloTriangleApplication {
     glfwDestroyWindow(window);
     glfwTerminate();
   }
+
+#pragma region DEVICE
+  bool isDeviceSuitable(VkPhysicalDevice device) {
+    VkPhysicalDeviceProperties deviceProperties;
+    vkGetPhysicalDeviceProperties(device, &deviceProperties);
+    std::cout << "deviceProperties.deviceName: " << deviceProperties.deviceName
+              << std::endl;
+
+    QueueFamilyIndices indices = findQueueFamilies(device);
+
+    return indices.isComplete();
+
+    // VkPhysicalDeviceFeatures deviceFeatures;
+    // vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+    // return deviceProperties.deviceType ==
+    //            VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
+    //        deviceFeatures.geometryShader;
+  }
+  void pickPhysicalDevice() {
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+    if (deviceCount == 0) {
+      throw std::runtime_error("failed to find GPUs with Vulkan support!");
+    }
+
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+    for (const auto& device : devices) {
+      if (isDeviceSuitable(device)) {
+        physicalDevice = device;
+        break;
+      }
+    }
+
+    if (physicalDevice == VK_NULL_HANDLE) {
+      throw std::runtime_error("failed to find a suitable GPU!");
+    }
+  }
+
+  struct QueueFamilyIndices {
+    std::optional<uint32_t> graphicsFamily;
+    bool isComplete() { return graphicsFamily.has_value(); }
+  };
+  QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+    QueueFamilyIndices indices;
+
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
+                                             nullptr);
+    std::cout << "queueFamilyCount: " << queueFamilyCount << std::endl;
+
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
+                                             queueFamilies.data());
+
+    for (uint32_t i = 0; i < queueFamilyCount; i++) {
+      if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+        indices.graphicsFamily = i;
+      }
+
+      if (indices.isComplete()) {
+        break;
+      }
+    }
+
+    return indices;
+  }
+
+#pragma endregion DEVICE
+
+#pragma region VALIDATION
 
   void populateDebugMessengerCreateInfo(
       VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
@@ -125,6 +202,35 @@ class HelloTriangleApplication {
     }
   }
 
+  bool checkValidationLayerSupport() {
+    std::cout << "checking validation layer support\n";
+    uint32_t layerCount;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+    std::vector<VkLayerProperties> availableLayers(layerCount);
+    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+    for (const char* layerName : validationLayers) {
+      bool layerFound = false;
+
+      for (const auto& layerProperties : availableLayers) {
+        if (strcmp(layerName, layerProperties.layerName) == 0) {
+          layerFound = true;
+          break;
+        }
+      }
+
+      if (!layerFound) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+#pragma endregion VALIDATION
+
+#pragma region INSTANCE
   void createInstance() {
     if (enableValidationLayers && !checkValidationLayerSupport()) {
       throw std::runtime_error(
@@ -200,37 +306,13 @@ class HelloTriangleApplication {
 
     return extensions;
   }
-
-  bool checkValidationLayerSupport() {
-    std::cout << "checking validation layer support\n";
-    uint32_t layerCount;
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-    std::vector<VkLayerProperties> availableLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-    for (const char* layerName : validationLayers) {
-      bool layerFound = false;
-
-      for (const auto& layerProperties : availableLayers) {
-        if (strcmp(layerName, layerProperties.layerName) == 0) {
-          layerFound = true;
-          break;
-        }
-      }
-
-      if (!layerFound) {
-        return false;
-      }
-    }
-
-    return true;
-  }
+#pragma endregion INSTANCE
 
   GLFWwindow* window = nullptr;
 
   VkInstance instance{};
   VkDebugUtilsMessengerEXT debugMessenger;
+  VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 };
 
 int main() {
