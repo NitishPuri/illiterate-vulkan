@@ -120,6 +120,8 @@ class App {
     createRenderPass();
     createGraphicsPipeline();
     createSwapChainBuffers();
+    createCommandPool();
+    createCommandBuffer();
   }
 
   void mainLoop() {
@@ -130,7 +132,8 @@ class App {
   void cleanup() {
     LOGFN;
 
-    for(auto framebuffer: swapChainFrameBuffers) {
+    LOGCALL(vkDestroyCommandPool(device, commandPool, nullptr));
+    for (auto framebuffer : swapChainFrameBuffers) {
       LOGCALL(vkDestroyFramebuffer(device, framebuffer, nullptr));
     }
 
@@ -186,6 +189,9 @@ class App {
   VkPipeline graphicsPipeline;
 
   std::vector<VkFramebuffer> swapChainFrameBuffers;
+
+  VkCommandPool commandPool;
+  VkCommandBuffer commandBuffer;
 
 #pragma endregion VARIABLES
 
@@ -927,6 +933,38 @@ class App {
     }
   }
 #pragma endregion FRAME_BUFFERS
+
+#pragma region COMMAND_BUFFERS
+  void createCommandPool() {
+    LOGFN;
+    QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
+
+    LOGCALL(VkCommandPoolCreateInfo poolInfo{});
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    LOG("Choose graphics family as we are using the command buffer for rendering");
+    LOGCALL(poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value());
+
+    if (LOGCALL(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool)) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create command pool!");
+    }
+  }
+
+  void createCommandBuffer() {
+    LOGFN;
+
+    LOGCALL(VkCommandBufferAllocateInfo allocInfo{});
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = commandPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+
+    if (LOGCALL(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)) != VK_SUCCESS) {
+      throw std::runtime_error("failed to allocate command buffers!");
+    }
+  }
+
+#pragma endregion COMMAND_BUFFERS
 };
 
 #pragma region MAIN
