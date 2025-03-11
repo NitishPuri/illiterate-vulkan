@@ -4,10 +4,9 @@
 class Logger {
  public:
   static void logFunctionEntry(const char* functionName) { instance().logFunctionEntryImpl(functionName); }
-
   static void logFunctionExit() { instance().logFunctionExitImpl(); }
-
-  static void logCall(const char* call) { instance().logCallImpl(call); }
+  static void log(const char* call) { return instance().logCallImpl(call); }
+  static std::ostream& logStream() { return instance().logStreamImpl(); }
 
  private:
   Logger() = default;
@@ -44,6 +43,13 @@ class Logger {
     std::cout << call << std::endl;
   }
 
+  std::ostream& logStreamImpl() {
+    for (int i = 0; i < callStack.size(); ++i) {
+      std::cout << "  ";
+    }
+    return std::cout;
+  }
+
   std::stack<const char*> callStack;
 };
 
@@ -59,9 +65,11 @@ class FunctionLogger {
 #ifdef NDEBUG
 #define LOGFN
 #define LOGCALL(x) x
+#define LOG(x)
 #else
 #define LOGFN FunctionLogger functionLogger(__FUNCTION__)
-#define LOGCALL(x)     \
-  Logger::logCall(#x); \
+#define LOGCALL(x) \
+  Logger::log(#x); \
   x
+#define LOG Logger::logStream()
 #endif

@@ -82,7 +82,7 @@ class App {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+    LOGCALL(window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr));
   }
 
   void initVulkan() {
@@ -96,9 +96,7 @@ class App {
 
   void mainLoop() {
     LOGFN;
-    while (!glfwWindowShouldClose(window)) {
-      glfwPollEvents();
-    }
+    LOGCALL(while (!glfwWindowShouldClose(window))) { glfwPollEvents(); }
   }
   void cleanup() {
     LOGFN;
@@ -127,17 +125,17 @@ class App {
     LOGFN;
     SwapChainSupportDetails details;
 
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+    LOGCALL(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities));
 
     uint32_t formatCount;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+    LOGCALL(vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr));
     if (formatCount != 0) {
       details.formats.resize(formatCount);
       vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
     }
 
     uint32_t presentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+    LOGCALL(vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr));
     if (presentModeCount != 0) {
       details.presentModes.resize(presentModeCount);
       vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
@@ -151,7 +149,7 @@ class App {
 #pragma region SURFACE
   void createSurface() {
     LOGFN;
-    if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+    if (LOGCALL(glfwCreateWindowSurface)(instance, window, nullptr, &surface) != VK_SUCCESS) {
       throw std::runtime_error("failed to create window surface!");
     }
   }
@@ -186,7 +184,7 @@ class App {
     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-    if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
+    if (LOGCALL(vkCreateDevice(physicalDevice, &createInfo, nullptr, &device)) != VK_SUCCESS) {
       throw std::runtime_error("failed to create logical device!");
     }
 
@@ -219,7 +217,7 @@ class App {
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
     std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+    LOGCALL(vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data()));
 
     std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
 
@@ -240,13 +238,13 @@ class App {
     }
 
     std::vector<VkPhysicalDevice> devices(deviceCount);
-    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+    LOGCALL(vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data()));
 
     for (const auto& device : devices) {
       if (isDeviceSuitable(device)) {
         VkPhysicalDeviceProperties deviceProperties;
         vkGetPhysicalDeviceProperties(device, &deviceProperties);
-        std::cout << "found suitable device " << deviceProperties.deviceName << std::endl;
+        LOG << "found suitable device " << deviceProperties.deviceName << std::endl;
 
         physicalDevice = device;
 
@@ -270,7 +268,7 @@ class App {
 
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-    std::cout << "queueFamilyCount: " << queueFamilyCount << std::endl;
+    LOG << "queueFamilyCount :" << queueFamilyCount << std::endl;
 
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
@@ -329,7 +327,7 @@ class App {
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
     std::vector<VkLayerProperties> availableLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+    LOGCALL(vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data()));
 
     for (const char* layerName : validationLayers) {
       bool layerFound = false;
@@ -378,7 +376,7 @@ class App {
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
     if (enableValidationLayers) {
-      std::cout << "validation layers enabled\n";
+      LOG << "validation layers are enabled\n";
       createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
       createInfo.ppEnabledLayerNames = validationLayers.data();
 
@@ -401,14 +399,14 @@ class App {
     LOGFN;
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    LOGCALL(glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount));
 
     if (false) {
       // query all extensions
       uint32_t extensionCount = 0;
       vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
       std::vector<VkExtensionProperties> extensions(extensionCount);
-      vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+      LOGCALL(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data()));
       std::cout << "available extensions:\n";
 
       for (const auto& extension : extensions) {
