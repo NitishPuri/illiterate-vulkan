@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "logger.h"
+
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
@@ -44,6 +46,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
                                       const VkAllocationCallbacks* pAllocator,
                                       VkDebugUtilsMessengerEXT* pDebugMessenger) {
+  LOGFN;
   auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
   if (func != nullptr) {
     return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
@@ -54,6 +57,7 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMes
 
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
                                    const VkAllocationCallbacks* pAllocator) {
+  LOGFN;
   auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
   if (func != nullptr) {
     func(instance, debugMessenger, pAllocator);
@@ -61,7 +65,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 }
 #pragma endregion VALIDATION_CALLBACK
 
-class HelloTriangleApplication {
+class App {
  public:
   void run() {
     initWindow();
@@ -72,7 +76,8 @@ class HelloTriangleApplication {
 
  private:
   void initWindow() {
-    glfwInit();
+    LOGFN;
+    LOGCALL(glfwInit());
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
@@ -81,6 +86,7 @@ class HelloTriangleApplication {
   }
 
   void initVulkan() {
+    LOGFN;
     createInstance();
     setupDebugMessenger();
     createSurface();
@@ -89,11 +95,13 @@ class HelloTriangleApplication {
   }
 
   void mainLoop() {
+    LOGFN;
     while (!glfwWindowShouldClose(window)) {
       glfwPollEvents();
     }
   }
   void cleanup() {
+    LOGFN;
     vkDestroyDevice(device, nullptr);
 
     if (enableValidationLayers) {
@@ -115,10 +123,34 @@ class HelloTriangleApplication {
     std::vector<VkPresentModeKHR> presentModes;
   };
 
+  SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) {
+    LOGFN;
+    SwapChainSupportDetails details;
+
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+    uint32_t formatCount;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+    if (formatCount != 0) {
+      details.formats.resize(formatCount);
+      vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+    }
+
+    uint32_t presentModeCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+    if (presentModeCount != 0) {
+      details.presentModes.resize(presentModeCount);
+      vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+    }
+
+    return details;
+  }
+
 #pragma endregion SWAPCHAIN
 
 #pragma region SURFACE
   void createSurface() {
+    LOGFN;
     if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
       throw std::runtime_error("failed to create window surface!");
     }
@@ -127,6 +159,7 @@ class HelloTriangleApplication {
 
 #pragma region DEVICE
   void createLogicalDevice() {
+    LOGFN;
     QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -166,12 +199,22 @@ class HelloTriangleApplication {
 #pragma region PHYSICAL_DEVICE
 
   bool isDeviceSuitable(VkPhysicalDevice device) {
+    LOGFN;
     QueueFamilyIndices indices = findQueueFamilies(device);
+
     bool extensionsSupported = checkDeviceExtensionSupport(device);
-    return indices.isComplete() && extensionsSupported;
+
+    bool swapChainAdequate = false;
+    if (extensionsSupported) {
+      SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+      swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+    }
+
+    return indices.isComplete() && extensionsSupported && swapChainAdequate;
   }
 
   bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
+    LOGFN;
     uint32_t extensionCount;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
@@ -188,6 +231,7 @@ class HelloTriangleApplication {
   }
 
   void pickPhysicalDevice() {
+    LOGFN;
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
@@ -221,6 +265,7 @@ class HelloTriangleApplication {
     bool isComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
   };
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+    LOGFN;
     QueueFamilyIndices indices;
 
     uint32_t queueFamilyCount = 0;
@@ -254,6 +299,7 @@ class HelloTriangleApplication {
 #pragma region VALIDATION
 
   void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
+    LOGFN;
     createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
@@ -266,6 +312,7 @@ class HelloTriangleApplication {
   }
 
   void setupDebugMessenger() {
+    LOGFN;
     if (!enableValidationLayers) return;
 
     VkDebugUtilsMessengerCreateInfoEXT createInfo;
@@ -277,7 +324,7 @@ class HelloTriangleApplication {
   }
 
   bool checkValidationLayerSupport() {
-    std::cout << "checking validation layer support\n";
+    LOGFN;
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
@@ -306,6 +353,7 @@ class HelloTriangleApplication {
 
 #pragma region INSTANCE
   void createInstance() {
+    LOGFN;
     if (enableValidationLayers && !checkValidationLayerSupport()) {
       throw std::runtime_error("validation layers requested, but not available!");
     }
@@ -350,6 +398,7 @@ class HelloTriangleApplication {
   }
 
   std::vector<const char*> getRequiredExtensions() {
+    LOGFN;
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -394,7 +443,7 @@ class HelloTriangleApplication {
 };
 
 int main() {
-  HelloTriangleApplication app;
+  App app;
 
   try {
     app.run();
