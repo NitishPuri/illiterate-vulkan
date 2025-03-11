@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -13,6 +14,8 @@
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
+
+std::unordered_set<std::string> OneTimeLogger::loggedFunctions;
 
 static std::vector<char> readFile(const std::string& filename) {
   LOGFN;
@@ -122,15 +125,30 @@ class App {
     createSwapChainBuffers();
     createCommandPool();
     createCommandBuffer();
+    createSyncObjects();
   }
 
   void mainLoop() {
     LOGFN;
-    LOGCALL(while (!glfwWindowShouldClose(window))) { glfwPollEvents(); }
+
+    static int frames = 0;
+    LOGCALL(while (!glfwWindowShouldClose(window))) {
+      glfwPollEvents();
+      drawFrame();
+
+      frames++;
+      // if (frames == 2) break;
+    }
+
+    LOGCALL(vkDeviceWaitIdle(device));
   }
 
   void cleanup() {
     LOGFN;
+
+    LOGCALL(vkDestroySemaphore(device, renderFinishedSemaphore, nullptr));
+    LOGCALL(vkDestroySemaphore(device, imageAvailableSemaphore, nullptr));
+    LOGCALL(vkDestroyFence(device, inFlightFence, nullptr));
 
     LOGCALL(vkDestroyCommandPool(device, commandPool, nullptr));
     for (auto framebuffer : swapChainFrameBuffers) {
@@ -192,6 +210,10 @@ class App {
 
   VkCommandPool commandPool;
   VkCommandBuffer commandBuffer;
+
+  VkSemaphore imageAvailableSemaphore;
+  VkSemaphore renderFinishedSemaphore;
+  VkFence inFlightFence;
 
 #pragma endregion VARIABLES
 
@@ -894,6 +916,15 @@ class App {
     LOGCALL(subpass.colorAttachmentCount = 1);
     LOGCALL(subpass.pColorAttachments = &colorAttachmentRef);
 
+    VkSubpassDependency dependency{};
+    LOG("dependency between the subpass and the external render pass");
+    LOGCALL(dependency.srcSubpass = VK_SUBPASS_EXTERNAL);
+    LOGCALL(dependency.dstSubpass = 0);
+    LOGCALL(dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    LOGCALL(dependency.srcAccessMask = 0);
+    LOGCALL(dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+    LOGCALL(dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+
     // Render pass
     LOG("Render Pass");
     LOGCALL(VkRenderPassCreateInfo renderPassInfo{});
@@ -902,6 +933,8 @@ class App {
     renderPassInfo.pAttachments = &colorAttachment;
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &dependency;
 
     if (LOGCALL(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass)) != VK_SUCCESS) {
       throw std::runtime_error("failed to create render pass!");
@@ -965,19 +998,19 @@ class App {
   }
 
   void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-    LOGFN;
+    LOGFN_ONCE;
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = 0;                   // Optional
     beginInfo.pInheritanceInfo = nullptr;  // Optional
 
-    if (LOGCALL(vkBeginCommandBuffer(commandBuffer, &beginInfo)) != VK_SUCCESS) {
+    if (LOGCALL_ONCE(vkBeginCommandBuffer(commandBuffer, &beginInfo)) != VK_SUCCESS) {
       throw std::runtime_error("failed to begin recording command buffer!");
     }
 
-    LOG("Start Render Pass");
-    LOGCALL(VkRenderPassBeginInfo renderPassInfo{});
+    LOG_ONCE("Start Render Pass");
+    LOGCALL_ONCE(VkRenderPassBeginInfo renderPassInfo{});
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = renderPass;
     renderPassInfo.framebuffer = swapChainFrameBuffers[imageIndex];
@@ -989,12 +1022,12 @@ class App {
     renderPassInfo.clearValueCount = 1;
     renderPassInfo.pClearValues = &clearColor;
 
-    LOGCALL(vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE));
+    LOGCALL_ONCE(vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE));
 
-    LOG("Bind Pipeline");
-    LOGCALL(vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline));
+    LOG_ONCE("Bind Pipeline");
+    LOGCALL_ONCE(vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline));
 
-    LOG("Set dynamic states");
+    LOG_ONCE("Set dynamic states");
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
@@ -1002,27 +1035,125 @@ class App {
     viewport.height = (float)swapChainExtent.height;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    LOGCALL(vkCmdSetViewport(commandBuffer, 0, 1, &viewport));
+    LOGCALL_ONCE(vkCmdSetViewport(commandBuffer, 0, 1, &viewport));
 
     VkRect2D scissor{};
     scissor.offset = {0, 0};
     scissor.extent = swapChainExtent;
-    LOGCALL(vkCmdSetScissor(commandBuffer, 0, 1, &scissor));
+    LOGCALL_ONCE(vkCmdSetScissor(commandBuffer, 0, 1, &scissor));
 
-    LOG("FINALLY DRAW!!!");
-    LOGCALL(vkCmdDraw(commandBuffer, 3, 1, 0, 0));
+    LOG_ONCE("FINALLY DRAW!!!");
+    LOGCALL_ONCE(vkCmdDraw(commandBuffer, 3, 1, 0, 0));
 
-    LOG("End Render Pass");
-    LOGCALL(vkCmdEndRenderPass(commandBuffer));
+    LOG_ONCE("End Render Pass");
+    LOGCALL_ONCE(vkCmdEndRenderPass(commandBuffer));
 
-    if (LOGCALL(vkEndCommandBuffer(commandBuffer)) != VK_SUCCESS) {
+    if (LOGCALL_ONCE(vkEndCommandBuffer(commandBuffer)) != VK_SUCCESS) {
       throw std::runtime_error("failed to record command buffer!");
     }
 
-    LOG("Command Buffer Recorded");
+    LOG_ONCE("Command Buffer Recorded");
   }
 
 #pragma endregion COMMAND_BUFFERS
+
+#pragma region SYNCHRONISATION
+  void createSyncObjects() {
+    LOGFN;
+    LOG("Synchronization:");
+    LOG("Semaphors: signal and wait for the image available and render finished, sync between queues");
+    LOG("Fences: wait for the frame to finish before starting the next one, sync between CPU and GPU");
+
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    LOG("Create fence in signaled state, so that the first frame can start immediately");
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    LOG("vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore)");
+    LOG("vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore)");
+    LOG("vkCreateFence(device, &fenceInfo, nullptr, &inFlightFence)");
+    if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+        vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS ||
+        vkCreateFence(device, &fenceInfo, nullptr, &inFlightFence) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create synchronization objects for a frame!");
+    }
+  }
+#pragma endregion SYNCHRONISATION
+
+#pragma region DRAW_FRAMES
+  void drawFrame() {
+    LOGFN_ONCE;
+    LOG_ONCE("--------------------------------------------------------------");
+    LOG_ONCE("Outline of a frame..");
+    LOG_ONCE("Wait for the previous frame to be finished");
+    LOG_ONCE("Acquire an image from the swap chain");
+    LOG_ONCE("Record a command buffer which draws the scene onto the image.");
+    LOG_ONCE("Submit the command buffer to the graphics queue.");
+    LOG_ONCE("Present the image to the swap chain for presentation.");
+    LOG_ONCE("--------------------------------------------------------------");
+
+    LOG_ONCE("Wait for the previous frame to be finished");
+    LOGCALL_ONCE(vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX));
+    LOGCALL_ONCE(vkResetFences(device, 1, &inFlightFence));
+
+    LOG_ONCE("Acquire an image from the swap chain");
+    uint32_t imageIndex;
+    LOGCALL_ONCE(
+        vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex));
+
+    LOGCALL_ONCE(vkResetCommandBuffer(commandBuffer, 0));
+    LOG_ONCE("Record a command buffer which draws the scene onto the image.");
+    recordCommandBuffer(commandBuffer, imageIndex);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    LOG_ONCE("Wait for the imageAvailableSemaphore..");
+    VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
+    LOG_ONCE("Wait till the color attachment is ready for writing..");
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    VkSemaphore signalSemaphores[] = {renderFinishedSemaphore};
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
+
+    LOG_ONCE("Submit the command buffer to the graphics queue");
+    if (LOGCALL_ONCE(vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence)) != VK_SUCCESS) {
+      throw std::runtime_error("failed to submit draw command buffer!");
+    }
+
+    // Presentation
+    LOG_ONCE("Presentation");
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+    presentInfo.waitSemaphoreCount = 1;
+    LOG_ONCE("Wait for the renderFinishedSemaphore..");
+    presentInfo.pWaitSemaphores = signalSemaphores;
+
+    LOG_ONCE("Specify swap chain to present to.");
+    VkSwapchainKHR swapChains[] = {swapChain};
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = swapChains;
+    presentInfo.pImageIndices = &imageIndex;
+    presentInfo.pResults = nullptr;  // Optional
+
+    LOG_ONCE("Present the image to the swap chain for presentation.");
+    if (LOGCALL_ONCE(vkQueuePresentKHR(presentQueue, &presentInfo)) != VK_SUCCESS) {
+      throw std::runtime_error("failed to present swap chain image!");
+    }
+
+    // firstFrame = false;
+  }
+#pragma endregion DRAW_FRAMES
 };
 
 #pragma region MAIN

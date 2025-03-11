@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <stack>
+#include <unordered_set>
 
 class Logger {
  public:
@@ -94,6 +95,36 @@ class FunctionLogger {
  private:
   const char* functionName;
 };
+
+class OneTimeLogger {
+ public:
+  OneTimeLogger(const std::string& functionName) : functionName(functionName) {
+    if (loggedFunctions.find(functionName) == loggedFunctions.end()) {
+      Logger::logFunctionEntry(functionName.c_str());
+      loggedFunctions.insert(functionName);
+      firstTime = true;
+    }
+  }
+
+  ~OneTimeLogger() {
+    if (firstTime) {
+      Logger::logFunctionExit();
+    }
+  }
+
+  template <typename... Args>
+  void logOnce(Args... args) {
+    if (firstTime) {
+      Logger::log(args...);
+    }
+  }
+
+ private:
+  std::string functionName;
+  bool firstTime = false;
+  static std::unordered_set<std::string> loggedFunctions;
+};
+
 #ifdef NDEBUG
 #define LOGFN
 #define LOGCALL(x) x
@@ -104,4 +135,9 @@ class FunctionLogger {
   Logger::log(#x); \
   x
 #define LOG(...) Logger::log(__VA_ARGS__)
+#define LOGFN_ONCE OneTimeLogger otl(__FUNCTION__)
+#define LOG_ONCE(...) otl.logOnce(__VA_ARGS__)
+#define LOGCALL_ONCE(x) \
+  otl.logOnce(#x);      \
+  x
 #endif

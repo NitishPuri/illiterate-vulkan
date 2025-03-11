@@ -155,6 +155,13 @@ App::initVulkan {
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS
     subpass.colorAttachmentCount = 1
     subpass.pColorAttachments = &colorAttachmentRef
+    dependency between the subpass and the external render pass
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL
+    dependency.dstSubpass = 0
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+    dependency.srcAccessMask = 0
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
     Render Pass
     VkRenderPassCreateInfo renderPassInfo{}
     vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass)
@@ -229,11 +236,67 @@ App::initVulkan {
     VkCommandBufferAllocateInfo allocInfo{}
     vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
   }
+  App::createSyncObjects {
+    Synchronization:
+    Semaphors: signal and wait for the image available and render finished, sync between queues
+    Fences: wait for the frame to finish before starting the next one, sync between CPU and GPU
+    Create fence in signaled state, so that the first frame can start immediately
+    vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore)
+    vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore)
+    vkCreateFence(device, &fenceInfo, nullptr, &inFlightFence)
+  }
 }
 App::mainLoop {
   while (!glfwWindowShouldClose(window))
+  App::drawFrame {
+    --------------------------------------------------------------
+    Outline of a frame..
+    Wait for the previous frame to be finished
+    Acquire an image from the swap chain
+    Record a command buffer which draws the scene onto the image.
+    Submit the command buffer to the graphics queue.
+    Present the image to the swap chain for presentation.
+    --------------------------------------------------------------
+    Wait for the previous frame to be finished
+    vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX)
+    vkResetFences(device, 1, &inFlightFence)
+    Acquire an image from the swap chain
+    vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex)
+    vkResetCommandBuffer(commandBuffer, 0)
+    Record a command buffer which draws the scene onto the image.
+    App::recordCommandBuffer {
+      vkBeginCommandBuffer(commandBuffer, &beginInfo)
+      Start Render Pass
+      VkRenderPassBeginInfo renderPassInfo{}
+      vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE)
+      Bind Pipeline
+      vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline)
+      Set dynamic states
+      vkCmdSetViewport(commandBuffer, 0, 1, &viewport)
+      vkCmdSetScissor(commandBuffer, 0, 1, &scissor)
+      FINALLY DRAW!!!
+      vkCmdDraw(commandBuffer, 3, 1, 0, 0)
+      End Render Pass
+      vkCmdEndRenderPass(commandBuffer)
+      vkEndCommandBuffer(commandBuffer)
+      Command Buffer Recorded
+    }
+    Wait for the imageAvailableSemaphore..
+    Wait till the color attachment is ready for writing..
+    Submit the command buffer to the graphics queue
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence)
+    Presentation
+    Wait for the renderFinishedSemaphore..
+    Specify swap chain to present to.
+    Present the image to the swap chain for presentation.
+    vkQueuePresentKHR(presentQueue, &presentInfo)
+  }
+  vkDeviceWaitIdle(device)
 }
 App::cleanup {
+  vkDestroySemaphore(device, renderFinishedSemaphore, nullptr)
+  vkDestroySemaphore(device, imageAvailableSemaphore, nullptr)
+  vkDestroyFence(device, inFlightFence, nullptr)
   vkDestroyCommandPool(device, commandPool, nullptr)
   vkDestroyFramebuffer(device, framebuffer, nullptr)
   vkDestroyFramebuffer(device, framebuffer, nullptr)
