@@ -2,7 +2,6 @@ Illiterate Vulkan!
 App::initWindow {
   glfwInit()
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API)
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE)
   window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr)
 }
 App::initVulkan {
@@ -98,6 +97,7 @@ App::initVulkan {
     }
     App::chooseSwapExtent {
     }
+    swap chain extent:  800 x 600
     imageUsage: VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
     App::findQueueFamilies {
       queueFamilyCount : 6
@@ -290,6 +290,75 @@ App::mainLoop {
     Specify swap chain to present to.
     Present the image to the swap chain for presentation.
     result = vkQueuePresentKHR(presentQueue, &presentInfo)
+  }
+  App::recreateSwapChain {
+    vkDeviceWaitIdle(device)
+    App::cleanupSwapChain {
+      vkDestroyFramebuffer(device, framebuffer, nullptr)
+      vkDestroyFramebuffer(device, framebuffer, nullptr)
+      vkDestroyFramebuffer(device, framebuffer, nullptr)
+      vkDestroyImageView(device, imageView, nullptr)
+      vkDestroyImageView(device, imageView, nullptr)
+      vkDestroyImageView(device, imageView, nullptr)
+      vkDestroySwapchainKHR(device, swapChain, nullptr)
+    }
+    App::createSwapChain {
+      App::querySwapChainSupport {
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities)
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr)
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr)
+      }
+      App::chooseSwapSurfaceFormat {
+      }
+      App::chooseSwapPresentMode {
+      }
+      App::chooseSwapExtent {
+      }
+      swap chain extent:  2560 x 1369
+      imageUsage: VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+      App::findQueueFamilies {
+        queueFamilyCount : 6
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport)
+        found queue families 0 0
+      }
+      graphics and present queues are the same
+      createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE
+      createInfo.preTransform = swapChainSupport.capabilities.currentTransform
+      createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+      createInfo.presentMode = presentMode
+      createInfo.oldSwapchain = VK_NULL_HANDLE
+      vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain)
+      vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data())
+    }
+    App::createImageViews {
+      swapChainImageViews.resize(swapChainImages.size())
+      swapChainImages.size():  3
+      createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D
+      format:  50
+      components: VK_COMPONENT_SWIZZLE_IDENTITY
+      No mipmapping or multiple layers
+      createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
+      vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i])
+      createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D
+      format:  50
+      components: VK_COMPONENT_SWIZZLE_IDENTITY
+      No mipmapping or multiple layers
+      createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
+      vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i])
+      createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D
+      format:  50
+      components: VK_COMPONENT_SWIZZLE_IDENTITY
+      No mipmapping or multiple layers
+      createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
+      vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i])
+    }
+    App::createFrameBuffers {
+      swapChainFrameBuffers.resize(swapChainImageViews.size())
+      vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
+      vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
+      vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
+    }
   }
   vkDeviceWaitIdle(device)
 }

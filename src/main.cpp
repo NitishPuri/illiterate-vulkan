@@ -107,9 +107,16 @@ class App {
     LOGCALL(glfwInit());
 
     LOGCALL(glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API));
-    LOGCALL(glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE));
+    // LOGCALL(glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE));
 
     LOGCALL(window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr));
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+  }
+
+  static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+    auto app = reinterpret_cast<App*>(glfwGetWindowUserPointer(window));
+    app->framebbufferResized = true;
   }
 
   void initVulkan() {
@@ -208,6 +215,8 @@ class App {
   std::vector<VkSemaphore> imageAvailableSemaphores;
   std::vector<VkSemaphore> renderFinishedSemaphores;
   std::vector<VkFence> inFlightFences;
+
+  bool framebbufferResized = false;
 
   uint32_t currentFrame = 0;
 
@@ -584,6 +593,7 @@ class App {
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
     VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
     VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+    LOG("swap chain extent: ", extent.width, "x", extent.height);
 
     // recommended to request at least one more image than the minimum
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
@@ -660,6 +670,13 @@ class App {
 
   void recreateSwapChain() {
     LOGFN;
+
+    int width = 0, height = 0;
+    while (width == 0 || height == 0) {
+      glfwGetFramebufferSize(window, &width, &height);
+      glfwWaitEvents();
+    }
+
     LOGCALL(vkDeviceWaitIdle(device));
 
     cleanupSwapChain();
@@ -1186,7 +1203,8 @@ class App {
 
     LOG_ONCE("Present the image to the swap chain for presentation.");
     LOGCALL_ONCE(result = vkQueuePresentKHR(presentQueue, &presentInfo));
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebbufferResized) {
+      framebbufferResized = false;
       recreateSwapChain();
     } else if (result != VK_SUCCESS) {
       throw std::runtime_error("failed to present swap chain image!");
