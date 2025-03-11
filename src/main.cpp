@@ -273,7 +273,7 @@ class App {
 #pragma region SURFACE
   void createSurface() {
     LOGFN;
-    if (LOGCALL(glfwCreateWindowSurface)(instance, window, nullptr, &surface) != VK_SUCCESS) {
+    if (LOGCALL(glfwCreateWindowSurface(instance, window, nullptr, &surface)) != VK_SUCCESS) {
       throw std::runtime_error("failed to create window surface!");
     }
   }
@@ -364,6 +364,8 @@ class App {
     std::vector<VkPhysicalDevice> devices(deviceCount);
     LOGCALL(vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data()));
 
+    LOG("Available Devices: ", deviceCount);
+
     for (const auto& device : devices) {
       if (isDeviceSuitable(device)) {
         VkPhysicalDeviceProperties deviceProperties;
@@ -395,11 +397,11 @@ class App {
     LOG("queueFamilyCount :", queueFamilyCount);
 
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+    LOGCALL(vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data()));
 
     for (uint32_t i = 0; i < queueFamilyCount; i++) {
       VkBool32 presentSupport = false;
-      vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+      LOGCALL(vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport));
       if (presentSupport) {
         indices.presentFamily = i;
       }
@@ -413,6 +415,7 @@ class App {
       }
     }
 
+    LOG("found queue families", indices.graphicsFamily.value(), indices.presentFamily.value());
     return indices;
   }
 

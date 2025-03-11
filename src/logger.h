@@ -63,8 +63,8 @@ class Logger {
       std::cout << "  ";
       logFile << "  ";
     }
-    std::cout << arg;
-    logFile << arg;
+    std::cout << arg << " ";
+    logFile << arg << " ";
     logImplRec(args...);
   }
 
@@ -76,8 +76,8 @@ class Logger {
 
   template <typename T, typename... Args>
   void logImplRec(T arg, Args... args) {
-    std::cout << arg;
-    logFile << arg;
+    std::cout << arg << " ";
+    logFile << arg << " ";
     logImplRec(args...);
   }
 
