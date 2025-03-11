@@ -964,6 +964,64 @@ class App {
     }
   }
 
+  void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    LOGFN;
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0;                   // Optional
+    beginInfo.pInheritanceInfo = nullptr;  // Optional
+
+    if (LOGCALL(vkBeginCommandBuffer(commandBuffer, &beginInfo)) != VK_SUCCESS) {
+      throw std::runtime_error("failed to begin recording command buffer!");
+    }
+
+    LOG("Start Render Pass");
+    LOGCALL(VkRenderPassBeginInfo renderPassInfo{});
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = renderPass;
+    renderPassInfo.framebuffer = swapChainFrameBuffers[imageIndex];
+
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = swapChainExtent;
+
+    VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    renderPassInfo.clearValueCount = 1;
+    renderPassInfo.pClearValues = &clearColor;
+
+    LOGCALL(vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE));
+
+    LOG("Bind Pipeline");
+    LOGCALL(vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline));
+
+    LOG("Set dynamic states");
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float)swapChainExtent.width;
+    viewport.height = (float)swapChainExtent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    LOGCALL(vkCmdSetViewport(commandBuffer, 0, 1, &viewport));
+
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent = swapChainExtent;
+    LOGCALL(vkCmdSetScissor(commandBuffer, 0, 1, &scissor));
+
+    LOG("FINALLY DRAW!!!");
+    LOGCALL(vkCmdDraw(commandBuffer, 3, 1, 0, 0));
+
+    LOG("End Render Pass");
+    LOGCALL(vkCmdEndRenderPass(commandBuffer));
+
+    if (LOGCALL(vkEndCommandBuffer(commandBuffer)) != VK_SUCCESS) {
+      throw std::runtime_error("failed to record command buffer!");
+    }
+
+    LOG("Command Buffer Recorded");
+  }
+
 #pragma endregion COMMAND_BUFFERS
 };
 
