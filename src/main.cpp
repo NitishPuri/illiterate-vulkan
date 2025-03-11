@@ -117,6 +117,7 @@ class App {
     createLogicalDevice();
     createSwapChain();
     createImageViews();
+    createRenderPass();
     createGraphicsPipeline();
   }
 
@@ -129,6 +130,8 @@ class App {
     LOGFN;
 
     LOGCALL(vkDestroyPipelineLayout(device, pipelineLayout, nullptr));
+
+    LOGCALL(vkDestroyRenderPass(device, renderPass, nullptr));
 
     for (auto imageView : swapChainImageViews) {
       LOGCALL(vkDestroyImageView(device, imageView, nullptr));
@@ -172,7 +175,9 @@ class App {
 
   std::vector<VkImageView> swapChainImageViews;
 
+  VkRenderPass renderPass;
   VkPipelineLayout pipelineLayout;
+
 #pragma endregion VARIABLES
 
 #pragma region INSTANCE
@@ -813,6 +818,53 @@ class App {
   }
 
 #pragma endregion PIPELINE
+
+#pragma region RENDER_PASS
+  void createRenderPass() {
+    LOGFN;
+
+    VkAttachmentDescription colorAttachment{};
+    colorAttachment.format = swapChainImageFormat;
+    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    LOG("clear the values to a constant at the start");
+    LOGCALL(colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR);
+    LOG("store the values to memory for reading later");
+    LOGCALL(colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE);
+    LOG("not using stencil buffer");
+    LOGCALL(colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE);
+    LOGCALL(colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE);
+    LOG("layout transition before and after render pass");
+    LOGCALL(colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED);
+    LOGCALL(colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+    // Subpasses
+    VkAttachmentReference colorAttachmentRef{};
+    LOG("which attachment to reference by its index in the attachment descriptions array");
+    LOGCALL(colorAttachmentRef.attachment = 0);
+    LOG("layout the attachment will have during a subpass");
+    LOGCALL(colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    VkSubpassDescription subpass{};
+    LOG("subpass dependencies, for layout transitions");
+    LOGCALL(subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS);
+    LOGCALL(subpass.colorAttachmentCount = 1);
+    LOGCALL(subpass.pColorAttachments = &colorAttachmentRef);
+
+    // Render pass
+    LOG("Render Pass");
+    LOGCALL(VkRenderPassCreateInfo renderPassInfo{});
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = &colorAttachment;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpass;
+
+    if (LOGCALL(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass)) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create render pass!");
+    }
+  }
+
+#pragma endregion RENDER_PASS
 };
 
 #pragma region MAIN

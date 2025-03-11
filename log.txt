@@ -136,6 +136,29 @@ App::initVulkan {
     createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
     vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i])
   }
+  App::createRenderPass {
+    clear the values to a constant at the start
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR
+    store the values to memory for reading later
+    colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE
+    not using stencil buffer
+    colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE
+    colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE
+    layout transition before and after render pass
+    colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    which attachment to reference by its index in the attachment descriptions array
+    colorAttachmentRef.attachment = 0
+    layout the attachment will have during a subpass
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+    subpass dependencies, for layout transitions
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS
+    subpass.colorAttachmentCount = 1
+    subpass.pColorAttachments = &colorAttachmentRef
+    Render Pass
+    VkRenderPassCreateInfo renderPassInfo{}
+    vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass)
+  }
   App::createGraphicsPipeline {
     Loading shaders, can wither load pre compiled shaders, or compile at runtime to SPIR-V
     readFile {
@@ -185,6 +208,7 @@ App::mainLoop {
 }
 App::cleanup {
   vkDestroyPipelineLayout(device, pipelineLayout, nullptr)
+  vkDestroyRenderPass(device, renderPass, nullptr)
   vkDestroyImageView(device, imageView, nullptr)
   vkDestroyImageView(device, imageView, nullptr)
   vkDestroyImageView(device, imageView, nullptr)
