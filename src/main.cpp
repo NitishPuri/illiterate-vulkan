@@ -1072,7 +1072,7 @@ class App {
     }
 
     // Memory requirements
-    LOG("Memory Requirements");
+    LOG("Get Memory Requirements");
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
 
@@ -1083,11 +1083,20 @@ class App {
         findMemoryType(memRequirements.memoryTypeBits,  //
                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
+    LOG("Allocate Memory");
     if (LOGCALL(vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory)) != VK_SUCCESS) {
       throw std::runtime_error("failed to allocate vertex buffer memory!");
     }
 
+    LOG("Bind Memory");
     LOGCALL(vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0));
+
+    void* data;
+    LOGCALL(vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data));
+    LOGCALL(memcpy(data, vertices.data(), (size_t)bufferInfo.size));
+    LOGCALL(vkUnmapMemory(device, vertexBufferMemory));
+
+    LOG("Vertex Buffer Created");
   }
 
   uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
