@@ -1125,12 +1125,22 @@ class App {
 
     LOG_ONCE("Wait for the previous frame to be finished");
     LOGCALL_ONCE(vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX));
-    LOGCALL_ONCE(vkResetFences(device, 1, &inFlightFences[currentFrame]));
 
     LOG_ONCE("Acquire an image from the swap chain");
     uint32_t imageIndex;
-    LOGCALL_ONCE(vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame],
-                                       VK_NULL_HANDLE, &imageIndex));
+    LOGCALL_ONCE(VkResult result =
+                     vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame],
+                                           VK_NULL_HANDLE, &imageIndex));
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+      recreateSwapChain();
+      return;
+    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+      throw std::runtime_error("failed to acquire swap chain image!");
+    }
+
+    // Only reset the fence if we are submitting work
+    LOGCALL_ONCE(vkResetFences(device, 1, &inFlightFences[currentFrame]));
 
     LOGCALL_ONCE(vkResetCommandBuffer(commandBuffers[currentFrame], 0));
     LOG_ONCE("Record a command buffer which draws the scene onto the image.");
@@ -1175,7 +1185,10 @@ class App {
     presentInfo.pResults = nullptr;  // Optional
 
     LOG_ONCE("Present the image to the swap chain for presentation.");
-    if (LOGCALL_ONCE(vkQueuePresentKHR(presentQueue, &presentInfo)) != VK_SUCCESS) {
+    LOGCALL_ONCE(result = vkQueuePresentKHR(presentQueue, &presentInfo));
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+      recreateSwapChain();
+    } else if (result != VK_SUCCESS) {
       throw std::runtime_error("failed to present swap chain image!");
     }
 

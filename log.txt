@@ -259,9 +259,9 @@ App::mainLoop {
     --------------------------------------------------------------
     Wait for the previous frame to be finished
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX)
-    vkResetFences(device, 1, &inFlightFences[currentFrame])
     Acquire an image from the swap chain
-    vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex)
+    VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex)
+    vkResetFences(device, 1, &inFlightFences[currentFrame])
     vkResetCommandBuffer(commandBuffers[currentFrame], 0)
     Record a command buffer which draws the scene onto the image.
     App::recordCommandBuffer {
@@ -289,7 +289,7 @@ App::mainLoop {
     Wait for the renderFinishedSemaphore..
     Specify swap chain to present to.
     Present the image to the swap chain for presentation.
-    vkQueuePresentKHR(presentQueue, &presentInfo)
+    result = vkQueuePresentKHR(presentQueue, &presentInfo)
   }
   vkDeviceWaitIdle(device)
 }
