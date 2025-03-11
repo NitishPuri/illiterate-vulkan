@@ -239,17 +239,19 @@ App::initVulkan {
     vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool)
   }
   App::createVertexBuffer {
-    vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer)
-    Get Memory Requirements
-    App::findMemoryType {
-      vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties)
+    App::createBuffer {
+      vkCreateBuffer(device, &bufferInfo, nullptr, &buffer)
+      Get Memory Requirements
+      App::findMemoryType {
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties)
+      }
+      Allocate Memory
+      vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory)
+      Bind Memory
+      vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0)
     }
-    Allocate Memory
-    vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory)
-    Bind Memory
-    vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0)
-    vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data)
-    memcpy(data, vertices.data(), (size_t)bufferInfo.size)
+    vkMapMemory(device, vertexBufferMemory, 0, bufferSize, 0, &data)
+    memcpy(data, vertices.data(), (size_t)bufferSize)
     vkUnmapMemory(device, vertexBufferMemory)
     Vertex Buffer Created
   }
