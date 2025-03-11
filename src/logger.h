@@ -65,7 +65,20 @@ class Logger {
     }
     std::cout << arg;
     logFile << arg;
-    logImpl(args...);
+    logImplRec(args...);
+  }
+
+  template <typename T, typename... Args>
+  void logImplRec(T arg) {
+    std::cout << arg << std::endl;
+    logFile << arg << std::endl;
+  }
+
+  template <typename T, typename... Args>
+  void logImplRec(T arg, Args... args) {
+    std::cout << arg;
+    logFile << arg;
+    logImplRec(args...);
   }
 
   std::stack<const char*> callStack;

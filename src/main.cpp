@@ -47,20 +47,22 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMes
                                       const VkAllocationCallbacks* pAllocator,
                                       VkDebugUtilsMessengerEXT* pDebugMessenger) {
   LOGFN;
-  auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+  LOGCALL(auto func =
+              (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
   if (func != nullptr) {
-    return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    LOGCALL(return func(instance, pCreateInfo, pAllocator, pDebugMessenger));
   } else {
-    return VK_ERROR_EXTENSION_NOT_PRESENT;
+    LOGCALL(return VK_ERROR_EXTENSION_NOT_PRESENT);
   }
 }
 
 void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger,
                                    const VkAllocationCallbacks* pAllocator) {
   LOGFN;
-  auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+  LOGCALL(auto func =
+              (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
   if (func != nullptr) {
-    func(instance, debugMessenger, pAllocator);
+    LOGCALL(func(instance, debugMessenger, pAllocator));
   }
 }
 #pragma endregion VALIDATION_CALLBACK
@@ -80,8 +82,8 @@ class App {
     LOGFN;
     LOGCALL(glfwInit());
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    LOGCALL(glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API));
+    LOGCALL(glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE));
 
     LOGCALL(window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr));
   }
@@ -456,6 +458,7 @@ class App {
 
       for (const auto& layerProperties : availableLayers) {
         if (strcmp(layerName, layerProperties.layerName) == 0) {
+          LOG("found validation layer: ", layerName);
           layerFound = true;
           break;
         }
@@ -488,7 +491,7 @@ class App {
     appInfo.apiVersion = VK_API_VERSION_1_0;
 
     //
-    VkInstanceCreateInfo createInfo{};
+    LOGCALL(VkInstanceCreateInfo createInfo{});
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
 
@@ -512,7 +515,7 @@ class App {
       createInfo.pNext = nullptr;
     }
 
-    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+    if (LOGCALL(vkCreateInstance(&createInfo, nullptr, &instance)) != VK_SUCCESS) {
       throw std::runtime_error("failed to create instance!");
     }
   }
@@ -529,10 +532,10 @@ class App {
       vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
       std::vector<VkExtensionProperties> extensions(extensionCount);
       LOGCALL(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data()));
-      LOG("extensionCount: ", extensionCount);
+      LOG("Available Extensions: ", extensionCount);
 
       for (const auto& extension : extensions) {
-        LOG(extension.extensionName);
+        LOG("  ", extension.extensionName);
       }
     }
 
@@ -540,6 +543,11 @@ class App {
 
     if (enableValidationLayers) {
       extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+
+    LOG("Required Extensions: ", extensions.size());
+    for (const auto& extension : extensions) {
+      LOG("  ", extension);
     }
 
     return extensions;
