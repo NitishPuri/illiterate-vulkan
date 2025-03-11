@@ -136,6 +136,22 @@ App::initVulkan {
     createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
     vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i])
   }
+  App::createGraphicsPipeline {
+    readFile {
+      Loading filename: ./bin/shaders/shader.vert.spv fileSize: 1504 bytes
+    }
+    readFile {
+      Loading filename: ./bin/shaders/shader.frag.spv fileSize: 572 bytes
+    }
+    VkShaderModule vertShaderModule = createShaderModule(vertShaderCode)
+    App::createShaderModule {
+      vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule)
+    }
+    VkShaderModule fragShaderModule = createShaderModule(fragShaderCode)
+    App::createShaderModule {
+      vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule)
+    }
+  }
 }
 App::mainLoop {
   while (!glfwWindowShouldClose(window))
