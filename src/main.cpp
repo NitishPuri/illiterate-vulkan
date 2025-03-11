@@ -96,6 +96,7 @@ class App {
     pickPhysicalDevice();
     createLogicalDevice();
     createSwapChain();
+    createImageViews();
   }
 
   void mainLoop() {
@@ -105,6 +106,10 @@ class App {
 
   void cleanup() {
     LOGFN;
+
+    for (auto imageView : swapChainImageViews) {
+      LOGCALL(vkDestroyImageView(device, imageView, nullptr));
+    }
 
     LOGCALL(vkDestroySwapchainKHR(device, swapChain, nullptr));
     LOGCALL(vkDestroyDevice(device, nullptr));
@@ -578,6 +583,41 @@ class App {
   }
 
 #pragma endregion SWAPCHAIN
+
+#pragma region IMAGE_VIEW
+  void createImageViews() {
+    LOGFN;
+    LOGCALL(swapChainImageViews.resize(swapChainImages.size()));
+    LOG("swapChainImages.size(): ", swapChainImages.size());
+
+    for (size_t i = 0; i < swapChainImages.size(); i++) {
+      VkImageViewCreateInfo createInfo{};
+      createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+      createInfo.image = swapChainImages[i];
+      LOGCALL(createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D);
+      createInfo.format = swapChainImageFormat;
+      LOG("format: ", swapChainImageFormat);
+
+      LOG("components: VK_COMPONENT_SWIZZLE_IDENTITY");
+      createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+      createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+      createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+      createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+      LOG("No mipmapping or multiple layers");
+      LOGCALL(createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT);
+      createInfo.subresourceRange.baseMipLevel = 0;
+      createInfo.subresourceRange.levelCount = 1;
+      createInfo.subresourceRange.baseArrayLayer = 0;
+      createInfo.subresourceRange.layerCount = 1;
+
+      if (LOGCALL(vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i])) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create image views!");
+      }
+    }
+  }
+
+#pragma endregion IMAGE_VIEW
 };
 
 #pragma region MAIN
