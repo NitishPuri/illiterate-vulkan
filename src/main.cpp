@@ -128,6 +128,8 @@ class App {
   void cleanup() {
     LOGFN;
 
+    LOGCALL(vkDestroyPipelineLayout(device, pipelineLayout, nullptr));
+
     for (auto imageView : swapChainImageViews) {
       LOGCALL(vkDestroyImageView(device, imageView, nullptr));
     }
@@ -169,6 +171,8 @@ class App {
   VkExtent2D swapChainExtent;
 
   std::vector<VkImageView> swapChainImageViews;
+
+  VkPipelineLayout pipelineLayout;
 #pragma endregion VARIABLES
 
 #pragma region INSTANCE
@@ -644,6 +648,7 @@ class App {
   void createGraphicsPipeline() {
     LOGFN;
 
+    LOG("Loading shaders, can wither load pre compiled shaders, or compile at runtime to SPIR-V");
     auto vertShaderCode = readFile("./bin/shaders/shader.vert.spv");
     auto fragShaderCode = readFile("./bin/shaders/shader.frag.spv");
 
@@ -666,8 +671,130 @@ class App {
 
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
-    vkDestroyShaderModule(device, vertShaderModule, nullptr);
-    vkDestroyShaderModule(device, fragShaderModule, nullptr);
+    LOG("Vertex Input");
+    LOGCALL(VkPipelineVertexInputStateCreateInfo vertexInputInfo{});
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.vertexBindingDescriptionCount = 0;
+    vertexInputInfo.pVertexBindingDescriptions = nullptr;  // Optional
+    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    vertexInputInfo.pVertexAttributeDescriptions = nullptr;  // Optional
+
+    LOG("Input Assembly");
+    LOGCALL(VkPipelineInputAssemblyStateCreateInfo inputAssembly{});
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;  //
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    // Viewports and scissors - if dynamic states are not used
+    // LOGCALL(VkViewport viewport{});
+    // viewport.x = 0.0f;
+    // viewport.y = 0.0f;
+    // viewport.width = (float)swapChainExtent.width;
+    // viewport.height = (float)swapChainExtent.height;
+    // viewport.minDepth = 0.0f;
+    // viewport.maxDepth = 1.0f;
+
+    // VkRect2D scissor{};
+    // scissor.offset = {0, 0};
+    // scissor.extent = swapChainExtent;
+
+    LOG("Viewport State, dynamic states are used for viewport and scissor");
+    LOGCALL(VkPipelineViewportStateCreateInfo viewportState{});
+    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.pViewports = nullptr;  // dynamic states
+    viewportState.scissorCount = 1;
+    viewportState.pScissors = nullptr;  // dynamic states
+
+    // Rasterizer
+    LOG("Rasterizer");
+    LOGCALL(VkPipelineRasterizationStateCreateInfo rasterizer{});
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    LOG("Using anything else requires enabling GPU features.");
+    LOGCALL(rasterizer.polygonMode = VK_POLYGON_MODE_FILL);  // VK_POLYGON_MODE_LINE, VK_POLYGON_MODE_POINT
+    LOGCALL(rasterizer.lineWidth = 1.0f);
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;     // VK_CULL_MODE_FRONT_BIT, VK_CULL_MODE_FRONT_AND_BACK
+    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;  // VK_FRONT_FACE_COUNTER_CLOCKWISE
+    LOGCALL(rasterizer.depthBiasEnable = VK_FALSE);
+    LOG("Depth Bias, for shadow mapping.");
+    rasterizer.depthBiasConstantFactor = 0.0f;  // Optional
+    rasterizer.depthBiasClamp = 0.0f;           // Optional
+    rasterizer.depthBiasSlopeFactor = 0.0f;     // Optional
+
+    // Multisampling
+    LOG("Multisampling, disabled for now.");
+    LOGCALL(VkPipelineMultisampleStateCreateInfo multisampling{});
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.minSampleShading = 1.0f;           // Optional
+    multisampling.pSampleMask = nullptr;             // Optional
+    multisampling.alphaToCoverageEnable = VK_FALSE;  // Optional
+    multisampling.alphaToOneEnable = VK_FALSE;       // Optional
+
+    // Depth and Stencil testing
+    LOG("Depth and Stencil testing, disabled for now, will pass on nullptr");
+    // LOGCALL(VkPipelineDepthStencilStateCreateInfo depthStencil{});
+    // depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    // depthStencil.depthTestEnable = VK_FALSE;
+    // depthStencil.depthWriteEnable = VK_FALSE;
+
+    // Color Blending
+    LOG("Color Blending, finalColor = newColor * newAlpha <colorBlendOp> oldColor * (1 - newAlpha)");
+    LOG("It is possible to have multiple color blending attachments, have logical ops, and have separate blending for "
+        "each color channel.");
+    LOGCALL(VkPipelineColorBlendAttachmentState colorBlendAttachment{});
+    colorBlendAttachment.colorWriteMask =
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;   // Optional
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;  // Optional
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;              // Optional
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;   // Optional
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;  // Optional
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;              // Optional
+
+    LOGCALL(VkPipelineColorBlendStateCreateInfo colorBlending{});
+    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY;
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttachment;
+    colorBlending.blendConstants[0] = 0.0f;
+    colorBlending.blendConstants[1] = 0.0f;
+    colorBlending.blendConstants[2] = 0.0f;
+    colorBlending.blendConstants[3] = 0.0f;
+
+    LOG("Setup dynamic states");
+    // std::vector<VkDynamicState> dynamicStates = {
+    //     VK_DYNAMIC_STATE_VIEWPORT,           VK_DYNAMIC_STATE_LINE_WIDTH,       VK_DYNAMIC_STATE_DEPTH_BIAS,
+    //     VK_DYNAMIC_STATE_BLEND_CONSTANTS,    VK_DYNAMIC_STATE_DEPTH_BOUNDS, VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK,
+    //     VK_DYNAMIC_STATE_STENCIL_WRITE_MASK, VK_DYNAMIC_STATE_STENCIL_REFERENCE};
+
+    std::vector<VkDynamicState> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dynamicState{};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+    dynamicState.pDynamicStates = dynamicStates.data();
+
+    // Pipeline layout
+    LOG("Pipeline Layout, for uniforms and push constants");
+    LOGCALL(VkPipelineLayoutCreateInfo pipelineLayoutInfo{});
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 0;     // Optional
+    pipelineLayoutInfo.pSetLayouts = nullptr;  // Optional
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+    if (LOGCALL(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout)) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create pipeline layout!");
+    }
+
+    // cleanup
+    LOGCALL(vkDestroyShaderModule(device, vertShaderModule, nullptr));
+    LOGCALL(vkDestroyShaderModule(device, fragShaderModule, nullptr));
   }
 
   VkShaderModule createShaderModule(const std::vector<char>& code) {

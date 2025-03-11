@@ -137,6 +137,7 @@ App::initVulkan {
     vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i])
   }
   App::createGraphicsPipeline {
+    Loading shaders, can wither load pre compiled shaders, or compile at runtime to SPIR-V
     readFile {
       Loading filename: ./bin/shaders/shader.vert.spv fileSize: 1504 bytes
     }
@@ -151,12 +152,39 @@ App::initVulkan {
     App::createShaderModule {
       vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule)
     }
+    Vertex Input
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{}
+    Input Assembly
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly{}
+    Viewport State, dynamic states are used for viewport and scissor
+    VkPipelineViewportStateCreateInfo viewportState{}
+    Rasterizer
+    VkPipelineRasterizationStateCreateInfo rasterizer{}
+    Using anything else requires enabling GPU features.
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL
+    rasterizer.lineWidth = 1.0f
+    rasterizer.depthBiasEnable = VK_FALSE
+    Depth Bias, for shadow mapping.
+    Multisampling, disabled for now.
+    VkPipelineMultisampleStateCreateInfo multisampling{}
+    Depth and Stencil testing, disabled for now, will pass on nullptr
+    Color Blending, finalColor = newColor * newAlpha <colorBlendOp> oldColor * (1 - newAlpha)
+    It is possible to have multiple color blending attachments, have logical ops, and have separate blending for each color channel.
+    VkPipelineColorBlendAttachmentState colorBlendAttachment{}
+    VkPipelineColorBlendStateCreateInfo colorBlending{}
+    Setup dynamic states
+    Pipeline Layout, for uniforms and push constants
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{}
+    vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout)
+    vkDestroyShaderModule(device, vertShaderModule, nullptr)
+    vkDestroyShaderModule(device, fragShaderModule, nullptr)
   }
 }
 App::mainLoop {
   while (!glfwWindowShouldClose(window))
 }
 App::cleanup {
+  vkDestroyPipelineLayout(device, pipelineLayout, nullptr)
   vkDestroyImageView(device, imageView, nullptr)
   vkDestroyImageView(device, imageView, nullptr)
   vkDestroyImageView(device, imageView, nullptr)
