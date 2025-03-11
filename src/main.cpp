@@ -1177,6 +1177,11 @@ class App {
     LOG_ONCE("Bind Pipeline");
     LOGCALL_ONCE(vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline));
 
+    VkBuffer vertexBuffers[] = {vertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    LOG_ONCE("Bind Vertex Buffer");
+    LOGCALL_ONCE(vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets));
+
     LOG_ONCE("Set dynamic states");
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -1193,7 +1198,7 @@ class App {
     LOGCALL_ONCE(vkCmdSetScissor(commandBuffer, 0, 1, &scissor));
 
     LOG_ONCE("FINALLY DRAW!!!");
-    LOGCALL_ONCE(vkCmdDraw(commandBuffer, 3, 1, 0, 0));
+    LOGCALL_ONCE(vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0));
 
     LOG_ONCE("End Render Pass");
     LOGCALL_ONCE(vkCmdEndRenderPass(commandBuffer));
