@@ -119,6 +119,7 @@ class App {
     createImageViews();
     createRenderPass();
     createGraphicsPipeline();
+    createSwapChainBuffers();
   }
 
   void mainLoop() {
@@ -128,6 +129,10 @@ class App {
 
   void cleanup() {
     LOGFN;
+
+    for(auto framebuffer: swapChainFrameBuffers) {
+      LOGCALL(vkDestroyFramebuffer(device, framebuffer, nullptr));
+    }
 
     LOGCALL(vkDestroyPipeline(device, graphicsPipeline, nullptr));
     LOGCALL(vkDestroyPipelineLayout(device, pipelineLayout, nullptr));
@@ -179,6 +184,8 @@ class App {
   VkPipelineLayout pipelineLayout;
 
   VkPipeline graphicsPipeline;
+
+  std::vector<VkFramebuffer> swapChainFrameBuffers;
 
 #pragma endregion VARIABLES
 
@@ -896,6 +903,30 @@ class App {
   }
 
 #pragma endregion RENDER_PASS
+
+#pragma region FRAME_BUFFERS
+  void createSwapChainBuffers() {
+    LOGFN;
+    LOGCALL(swapChainFrameBuffers.resize(swapChainImageViews.size()));
+
+    for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+      VkImageView attachments[] = {swapChainImageViews[i]};
+
+      VkFramebufferCreateInfo framebufferInfo{};
+      framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+      framebufferInfo.renderPass = renderPass;
+      framebufferInfo.attachmentCount = 1;
+      framebufferInfo.pAttachments = attachments;
+      framebufferInfo.width = swapChainExtent.width;
+      framebufferInfo.height = swapChainExtent.height;
+      framebufferInfo.layers = 1;
+
+      if (LOGCALL(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create framebuffer!");
+      }
+    }
+  }
+#pragma endregion FRAME_BUFFERS
 };
 
 #pragma region MAIN

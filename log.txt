@@ -207,11 +207,20 @@ App::initVulkan {
     vkDestroyShaderModule(device, vertShaderModule, nullptr)
     vkDestroyShaderModule(device, fragShaderModule, nullptr)
   }
+  App::createSwapChainBuffers {
+    swapChainFrameBuffers.resize(swapChainImageViews.size())
+    vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
+    vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
+    vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
+  }
 }
 App::mainLoop {
   while (!glfwWindowShouldClose(window))
 }
 App::cleanup {
+  vkDestroyFramebuffer(device, framebuffer, nullptr)
+  vkDestroyFramebuffer(device, framebuffer, nullptr)
+  vkDestroyFramebuffer(device, framebuffer, nullptr)
   vkDestroyPipeline(device, graphicsPipeline, nullptr)
   vkDestroyPipelineLayout(device, pipelineLayout, nullptr)
   vkDestroyRenderPass(device, renderPass, nullptr)
