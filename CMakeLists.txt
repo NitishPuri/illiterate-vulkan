@@ -1,4 +1,4 @@
-project(vulkan-tutorial)
+project(illiterate-vulkan)
 cmake_minimum_required(VERSION 3.10)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -25,15 +25,15 @@ file(GLOB SOURCES
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT")
 
-add_executable(vulkan-tutorial ${SOURCES})
+add_executable(illiterate-vulkan ${SOURCES})
 
-target_include_directories(vulkan-tutorial PUBLIC
+target_include_directories(illiterate-vulkan PUBLIC
     ${GLFW_INCLUDE}
 )
 
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_LIB_DIR})
-target_link_libraries(vulkan-tutorial
+target_link_libraries(illiterate-vulkan
     glfw3
     ${Vulkan_LIBRARIES}
 )

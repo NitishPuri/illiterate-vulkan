@@ -1,4 +1,4 @@
 call build.bat
-@REM build\Release\vulkan-tutorial.exe %1
-build\Debug\vulkan-tutorial.exe %1
+@REM build\Release\illiterate-vulkan.exe %1
+build\Debug\illiterate-vulkan.exe %1
 
