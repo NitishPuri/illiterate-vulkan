@@ -1,3 +1,4 @@
+#include <fstream>
 #include <iostream>
 #include <stack>
 
@@ -5,11 +6,18 @@ class Logger {
  public:
   static void logFunctionEntry(const char* functionName) { instance().logFunctionEntryImpl(functionName); }
   static void logFunctionExit() { instance().logFunctionExitImpl(); }
-  static void log(const char* call) { return instance().logCallImpl(call); }
-  static std::ostream& logStream() { return instance().logStreamImpl(); }
+
+  template <typename... Args>
+  static void log(Args... args) {
+    instance().logImpl(args...);
+  }
 
  private:
-  Logger() = default;
+  Logger() : logFile("log.txt") {
+    if (!logFile.is_open()) {
+      std::cerr << "Failed to open log file" << std::endl;
+    }
+  }
 
   static Logger& instance() {
     static Logger logger;
@@ -19,8 +27,10 @@ class Logger {
   void logFunctionEntryImpl(const char* functionName) {
     for (int i = 0; i < callStack.size(); ++i) {
       std::cout << "  ";
+      logFile << "  ";
     }
     std::cout << functionName << " {" << std::endl;
+    logFile << functionName << " {" << std::endl;
     callStack.push(functionName);
   }
 
@@ -30,27 +40,36 @@ class Logger {
       callStack.pop();
       for (int i = 0; i < callStack.size(); ++i) {
         std::cout << "  ";
+        logFile << "  ";
       }
       std::cout << "}" << std::endl;
-      // std::cout << "} // " << functioName << std::endl;
+      logFile << "}" << std::endl;
     }
   }
 
-  void logCallImpl(const char* call) {
+  template <typename T>
+  void logImpl(T arg) {
     for (int i = 0; i < callStack.size(); ++i) {
       std::cout << "  ";
+      logFile << "  ";
     }
-    std::cout << call << std::endl;
+    std::cout << arg << std::endl;
+    logFile << arg << std::endl;
   }
 
-  std::ostream& logStreamImpl() {
+  template <typename T, typename... Args>
+  void logImpl(T arg, Args... args) {
     for (int i = 0; i < callStack.size(); ++i) {
       std::cout << "  ";
+      logFile << "  ";
     }
-    return std::cout;
+    std::cout << arg;
+    logFile << arg;
+    logImpl(args...);
   }
 
   std::stack<const char*> callStack;
+  std::ofstream logFile;
 };
 
 class FunctionLogger {
@@ -71,5 +90,5 @@ class FunctionLogger {
 #define LOGCALL(x) \
   Logger::log(#x); \
   x
-#define LOG Logger::logStream()
+#define LOG(...) Logger::log(__VA_ARGS__)
 #endif
