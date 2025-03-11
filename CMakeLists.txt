@@ -23,6 +23,8 @@ file(GLOB SOURCES
     src/shaders/*.frag
 )
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT")
+
 add_executable(vulkan-tutorial ${SOURCES})
 
 target_include_directories(vulkan-tutorial PUBLIC
