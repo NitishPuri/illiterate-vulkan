@@ -1,0 +1,69 @@
+App::initWindow {
+  glfwInit()
+  window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr)
+}
+App::initVulkan {
+  App::createInstance {
+    App::checkValidationLayerSupport {
+      vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data())
+    }
+    App::getRequiredExtensions {
+      glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount)
+    }
+    validation layers are enabled
+    App::populateDebugMessengerCreateInfo {
+    }
+  }
+  App::setupDebugMessenger {
+    App::populateDebugMessengerCreateInfo {
+    }
+    CreateDebugUtilsMessengerEXT {
+    }
+  }
+  App::createSurface {
+    glfwCreateWindowSurface
+  }
+  App::pickPhysicalDevice {
+    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data())
+    App::isDeviceSuitable {
+      App::findQueueFamilies {
+        queueFamilyCount :        6
+      }
+      App::checkDeviceExtensionSupport {
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data())
+      }
+      App::querySwapChainSupport {
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities)
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr)
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr)
+      }
+    }
+    found suitable device     NVIDIA GeForce RTX 3060 Laptop GPU
+  }
+  App::createLogicalDevice {
+    App::findQueueFamilies {
+      queueFamilyCount :      6
+    }
+    vkCreateDevice(physicalDevice, &createInfo, nullptr, &device)
+  }
+  App::createSwapChain {
+    App::querySwapChainSupport {
+      vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities)
+      vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr)
+      vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr)
+    }
+    App::chooseSwapSurfaceFormat {
+    }
+    App::chooseSwapPresentMode {
+    }
+    App::chooseSwapExtent {
+    }
+  }
+}
+App::mainLoop {
+  while (!glfwWindowShouldClose(window))
+}
+App::cleanup {
+  DestroyDebugUtilsMessengerEXT {
+  }
+}
