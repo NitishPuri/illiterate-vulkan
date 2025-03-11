@@ -7,6 +7,8 @@ class Logger {
 
   static void logFunctionExit() { instance().logFunctionExitImpl(); }
 
+  static void logCall(const char* call) { instance().logCallImpl(call); }
+
  private:
   Logger() = default;
 
@@ -35,6 +37,13 @@ class Logger {
     }
   }
 
+  void logCallImpl(const char* call) {
+    for (int i = 0; i < callStack.size(); ++i) {
+      std::cout << "  ";
+    }
+    std::cout << call << std::endl;
+  }
+
   std::stack<const char*> callStack;
 };
 
@@ -49,6 +58,10 @@ class FunctionLogger {
 };
 #ifdef NDEBUG
 #define LOGFN
+#define LOGCALL(x) x
 #else
 #define LOGFN FunctionLogger functionLogger(__FUNCTION__)
+#define LOGCALL(x)     \
+  Logger::logCall(#x); \
+  x
 #endif
