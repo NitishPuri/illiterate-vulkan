@@ -199,6 +199,11 @@ App::initVulkan {
     Pipeline Layout, for uniforms and push constants
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{}
     vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout)
+    Create Graphics Pipeline
+    Graphics Pipeline, the final pipeline object that will be used in rendering
+    Here we are combining : shaders, fixed function stages(vertex info, input assembly, viewport syate, rasterizer, multisampleing, depthStencil and color blending), pipeline layout and render pass
+    VkGraphicsPipelineCreateInfo pipelineInfo{}
+    vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline)
     vkDestroyShaderModule(device, vertShaderModule, nullptr)
     vkDestroyShaderModule(device, fragShaderModule, nullptr)
   }
@@ -207,6 +212,7 @@ App::mainLoop {
   while (!glfwWindowShouldClose(window))
 }
 App::cleanup {
+  vkDestroyPipeline(device, graphicsPipeline, nullptr)
   vkDestroyPipelineLayout(device, pipelineLayout, nullptr)
   vkDestroyRenderPass(device, renderPass, nullptr)
   vkDestroyImageView(device, imageView, nullptr)

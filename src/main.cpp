@@ -129,8 +129,8 @@ class App {
   void cleanup() {
     LOGFN;
 
+    LOGCALL(vkDestroyPipeline(device, graphicsPipeline, nullptr));
     LOGCALL(vkDestroyPipelineLayout(device, pipelineLayout, nullptr));
-
     LOGCALL(vkDestroyRenderPass(device, renderPass, nullptr));
 
     for (auto imageView : swapChainImageViews) {
@@ -177,6 +177,8 @@ class App {
 
   VkRenderPass renderPass;
   VkPipelineLayout pipelineLayout;
+
+  VkPipeline graphicsPipeline;
 
 #pragma endregion VARIABLES
 
@@ -795,6 +797,35 @@ class App {
 
     if (LOGCALL(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout)) != VK_SUCCESS) {
       throw std::runtime_error("failed to create pipeline layout!");
+    }
+
+    LOG("Create Graphics Pipeline");
+    LOG("Graphics Pipeline, the final pipeline object that will be used in rendering");
+    LOG("Here we are combining : shaders, fixed function stages(vertex info, input assembly, viewport syate, "
+        "rasterizer, multisampleing, depthStencil and color blending), pipeline layout and render pass");
+    LOGCALL(VkGraphicsPipelineCreateInfo pipelineInfo{});
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    // pipelineInfo.pDepthStencilState = &depthStencil;
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.pDynamicState = &dynamicState;
+
+    pipelineInfo.layout = pipelineLayout;
+    pipelineInfo.renderPass = renderPass;
+    pipelineInfo.subpass = 0;
+
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;  // Optional
+    pipelineInfo.basePipelineIndex = -1;               // Optional
+
+    if (LOGCALL(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline)) !=
+        VK_SUCCESS) {
+      throw std::runtime_error("failed to create graphics pipeline!");
     }
 
     // cleanup
