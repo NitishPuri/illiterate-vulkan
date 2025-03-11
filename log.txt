@@ -214,7 +214,7 @@ App::initVulkan {
     vkDestroyShaderModule(device, vertShaderModule, nullptr)
     vkDestroyShaderModule(device, fragShaderModule, nullptr)
   }
-  App::createSwapChainBuffers {
+  App::createFrameBuffers {
     swapChainFrameBuffers.resize(swapChainImageViews.size())
     vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
     vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
@@ -294,6 +294,18 @@ App::mainLoop {
   vkDeviceWaitIdle(device)
 }
 App::cleanup {
+  App::cleanupSwapChain {
+    vkDestroyFramebuffer(device, framebuffer, nullptr)
+    vkDestroyFramebuffer(device, framebuffer, nullptr)
+    vkDestroyFramebuffer(device, framebuffer, nullptr)
+    vkDestroyImageView(device, imageView, nullptr)
+    vkDestroyImageView(device, imageView, nullptr)
+    vkDestroyImageView(device, imageView, nullptr)
+    vkDestroySwapchainKHR(device, swapChain, nullptr)
+  }
+  vkDestroyPipeline(device, graphicsPipeline, nullptr)
+  vkDestroyPipelineLayout(device, pipelineLayout, nullptr)
+  vkDestroyRenderPass(device, renderPass, nullptr)
   vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr)
   vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr)
   vkDestroyFence(device, inFlightFences[i], nullptr)
@@ -301,16 +313,6 @@ App::cleanup {
   vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr)
   vkDestroyFence(device, inFlightFences[i], nullptr)
   vkDestroyCommandPool(device, commandPool, nullptr)
-  vkDestroyFramebuffer(device, framebuffer, nullptr)
-  vkDestroyFramebuffer(device, framebuffer, nullptr)
-  vkDestroyFramebuffer(device, framebuffer, nullptr)
-  vkDestroyPipeline(device, graphicsPipeline, nullptr)
-  vkDestroyPipelineLayout(device, pipelineLayout, nullptr)
-  vkDestroyRenderPass(device, renderPass, nullptr)
-  vkDestroyImageView(device, imageView, nullptr)
-  vkDestroyImageView(device, imageView, nullptr)
-  vkDestroyImageView(device, imageView, nullptr)
-  vkDestroySwapchainKHR(device, swapChain, nullptr)
   vkDestroyDevice(device, nullptr)
   DestroyDebugUtilsMessengerEXT {
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT")

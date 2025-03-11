@@ -123,7 +123,7 @@ class App {
     createImageViews();
     createRenderPass();
     createGraphicsPipeline();
-    createSwapChainBuffers();
+    createFrameBuffers();
     createCommandPool();
     createCommandBuffers();
     createSyncObjects();
@@ -143,6 +143,13 @@ class App {
   void cleanup() {
     LOGFN;
 
+    cleanupSwapChain();
+
+    LOGCALL(vkDestroyPipeline(device, graphicsPipeline, nullptr));
+    LOGCALL(vkDestroyPipelineLayout(device, pipelineLayout, nullptr));
+
+    LOGCALL(vkDestroyRenderPass(device, renderPass, nullptr));
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
       LOGCALL(vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr));
       LOGCALL(vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr));
@@ -150,19 +157,7 @@ class App {
     }
 
     LOGCALL(vkDestroyCommandPool(device, commandPool, nullptr));
-    for (auto framebuffer : swapChainFrameBuffers) {
-      LOGCALL(vkDestroyFramebuffer(device, framebuffer, nullptr));
-    }
 
-    LOGCALL(vkDestroyPipeline(device, graphicsPipeline, nullptr));
-    LOGCALL(vkDestroyPipelineLayout(device, pipelineLayout, nullptr));
-    LOGCALL(vkDestroyRenderPass(device, renderPass, nullptr));
-
-    for (auto imageView : swapChainImageViews) {
-      LOGCALL(vkDestroyImageView(device, imageView, nullptr));
-    }
-
-    LOGCALL(vkDestroySwapchainKHR(device, swapChain, nullptr));
     LOGCALL(vkDestroyDevice(device, nullptr));
 
     if (enableValidationLayers) {
@@ -650,6 +645,30 @@ class App {
     swapChainExtent = extent;
   }
 
+  void cleanupSwapChain() {
+    LOGFN;
+    for (auto framebuffer : swapChainFrameBuffers) {
+      LOGCALL(vkDestroyFramebuffer(device, framebuffer, nullptr));
+    }
+
+    for (auto imageView : swapChainImageViews) {
+      LOGCALL(vkDestroyImageView(device, imageView, nullptr));
+    }
+
+    LOGCALL(vkDestroySwapchainKHR(device, swapChain, nullptr));
+  }
+
+  void recreateSwapChain() {
+    LOGFN;
+    LOGCALL(vkDeviceWaitIdle(device));
+
+    cleanupSwapChain();
+
+    createSwapChain();
+    createImageViews();
+    createFrameBuffers();
+  }
+
 #pragma endregion SWAPCHAIN
 
 #pragma region IMAGE_VIEW
@@ -945,7 +964,7 @@ class App {
 #pragma endregion RENDER_PASS
 
 #pragma region FRAME_BUFFERS
-  void createSwapChainBuffers() {
+  void createFrameBuffers() {
     LOGFN;
     LOGCALL(swapChainFrameBuffers.resize(swapChainImageViews.size()));
 
