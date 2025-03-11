@@ -1,6 +1,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <optional>
@@ -33,11 +34,10 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
                                                     void* pUserData) {
   if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
     // Message is important enough to show
-    std::cerr << "[VALIDATION ERROR] validation layer: " << pCallbackData->pMessage << std::endl;
+    LOG("[VALIDATION ERROR] validation layer: ", pCallbackData->pMessage);
   } else {
     // Message is not important enough to show
-    // std::cout << "validation layer: " << pCallbackData->pMessage <<
-    // std::endl;
+    // LOG("[VALIDATION INFO] validation layer: ", pCallbackData->pMessage);
   }
 
   return VK_FALSE;
@@ -67,6 +67,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 class App {
  public:
+#pragma region APP
   void run() {
     initWindow();
     initVulkan();
@@ -92,27 +93,33 @@ class App {
     createSurface();
     pickPhysicalDevice();
     createLogicalDevice();
+    createSwapChain();
   }
 
   void mainLoop() {
     LOGFN;
     LOGCALL(while (!glfwWindowShouldClose(window))) { glfwPollEvents(); }
   }
+
   void cleanup() {
     LOGFN;
-    vkDestroyDevice(device, nullptr);
+
+    LOGCALL(vkDestroySwapchainKHR(device, swapChain, nullptr));
+    LOGCALL(vkDestroyDevice(device, nullptr));
 
     if (enableValidationLayers) {
       DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
     }
 
-    vkDestroySurfaceKHR(instance, surface, nullptr);
+    LOGCALL(vkDestroySurfaceKHR(instance, surface, nullptr));
 
-    vkDestroyInstance(instance, nullptr);
+    LOGCALL(vkDestroyInstance(instance, nullptr));
 
-    glfwDestroyWindow(window);
-    glfwTerminate();
+    LOGCALL(glfwDestroyWindow(window));
+    LOGCALL(glfwTerminate());
   }
+
+#pragma endregion APP
 
 #pragma region SWAPCHAIN
   struct SwapChainSupportDetails {
@@ -142,6 +149,121 @@ class App {
     }
 
     return details;
+  }
+
+  VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
+    LOGFN;
+    for (const auto& availableFormat : availableFormats) {
+      if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB &&
+          availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+        return availableFormat;
+      }
+    }
+
+    return availableFormats[0];
+  }
+
+  VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
+    LOGFN;
+    for (const auto& availablePresentMode : availablePresentModes) {
+      // Use VK_PRESENT_MODE_MAILBOX_KHR for triple buffering id enerygy is not a concern
+      // Use VK_PRESENT_MODE_FIFO_KHR for double buffering, preferable on mobile devices
+      if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+        return availablePresentMode;
+      }
+    }
+
+    return VK_PRESENT_MODE_FIFO_KHR;
+  }
+
+  VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
+    LOGFN;
+    if (capabilities.currentExtent.width != UINT32_MAX) {
+      return capabilities.currentExtent;
+    } else {
+      int width, height;
+      LOGCALL(glfwGetFramebufferSize(window, &width, &height));
+
+      LOG("window size: ", WIDTH, "x", HEIGHT);
+      LOG("frame buffer size ", width, "x", height);
+
+      VkExtent2D actualExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+
+      actualExtent.width =
+          std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+      actualExtent.height =
+          std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+      return actualExtent;
+    }
+  }
+
+  void createSwapChain() {
+    LOGFN;
+    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+
+    VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+    VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+    VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+
+    // recommended to request at least one more image than the minimum
+    uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+    if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+      imageCount = swapChainSupport.capabilities.maxImageCount;
+    }
+
+    VkSwapchainCreateInfoKHR createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = surface;
+    createInfo.minImageCount = imageCount;
+    createInfo.imageFormat = surfaceFormat.format;
+    createInfo.imageColorSpace = surfaceFormat.colorSpace;
+    createInfo.imageExtent = extent;
+    createInfo.imageArrayLayers = 1;  // always 1, unless Stereo 3D!!
+    createInfo.imageUsage =
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;  // means that we render directly to images in this swapchain
+    LOG("imageUsage: VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT");
+
+    // for rendering to a separate image first,
+    // then copy to the swapchain image, use VK_IMAGE_USAGE_TRANSFER_DST_BIT
+    // for post-processing, use VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+
+    // for sharing images between queues
+    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+    uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
+    if (indices.graphicsFamily != indices.presentFamily) {
+      LOG("graphics and present queues are different");
+      LOGCALL(createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT);
+      createInfo.queueFamilyIndexCount = 2;
+      createInfo.pQueueFamilyIndices = queueFamilyIndices;
+    } else {
+      LOG("graphics and present queues are the same");
+      LOGCALL(createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE);
+      createInfo.queueFamilyIndexCount = 0;      // Optional
+      createInfo.pQueueFamilyIndices = nullptr;  // Optional
+    }
+
+    // Used for transformations (eg. 90 degree rotation for mobile devices)
+    LOGCALL(createInfo.preTransform = swapChainSupport.capabilities.currentTransform);
+    // QUESTION: Can support transparent windows using this flag??
+    LOGCALL(createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
+    LOGCALL(createInfo.presentMode = presentMode);
+    // This is window clipping, i.e. if some other window is in front of this one
+    // then we can clip the rendering to the visible area
+    createInfo.clipped = VK_TRUE;
+
+    // QUESTION: What is the purpose of oldSwapChain?
+    LOGCALL(createInfo.oldSwapchain = VK_NULL_HANDLE);
+
+    if (LOGCALL(vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain)) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create swap chain!");
+    }
+
+    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
+    swapChainImages.resize(imageCount);
+    LOGCALL(vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data()));
+    swapChainImageFormat = surfaceFormat.format;
+    swapChainExtent = extent;
   }
 
 #pragma endregion SWAPCHAIN
@@ -244,7 +366,7 @@ class App {
       if (isDeviceSuitable(device)) {
         VkPhysicalDeviceProperties deviceProperties;
         vkGetPhysicalDeviceProperties(device, &deviceProperties);
-        LOG << "found suitable device " << deviceProperties.deviceName << std::endl;
+        LOG("found suitable device ", deviceProperties.deviceName);
 
         physicalDevice = device;
 
@@ -268,7 +390,7 @@ class App {
 
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-    LOG << "queueFamilyCount :" << queueFamilyCount << std::endl;
+    LOG("queueFamilyCount :", queueFamilyCount);
 
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
@@ -376,7 +498,7 @@ class App {
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
     if (enableValidationLayers) {
-      LOG << "validation layers are enabled\n";
+      LOG("validation layers are enabled");
       createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
       createInfo.ppEnabledLayerNames = validationLayers.data();
 
@@ -401,16 +523,16 @@ class App {
     const char** glfwExtensions;
     LOGCALL(glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount));
 
-    if (false) {
+    if (true) {
       // query all extensions
       uint32_t extensionCount = 0;
       vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
       std::vector<VkExtensionProperties> extensions(extensionCount);
       LOGCALL(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data()));
-      std::cout << "available extensions:\n";
+      LOG("extensionCount: ", extensionCount);
 
       for (const auto& extension : extensions) {
-        std::cout << '\t' << extension.extensionName << '\n';
+        LOG(extension.extensionName);
       }
     }
 
@@ -424,8 +546,7 @@ class App {
   }
 #pragma endregion INSTANCE
 
-  // MEMBERS
-
+#pragma region VARIABLES
   GLFWwindow* window = nullptr;
 
   VkInstance instance{};
@@ -438,17 +559,25 @@ class App {
 
   VkSurfaceKHR surface;
   VkQueue presentQueue;
+
+  VkSwapchainKHR swapChain;
+  std::vector<VkImage> swapChainImages;
+  VkFormat swapChainImageFormat;
+  VkExtent2D swapChainExtent;
+#pragma endregion VARIABLES
 };
 
+#pragma region MAIN
 int main() {
+  LOG("Illiterate Vulkan!");
   App app;
-
   try {
     app.run();
   } catch (const std::exception& e) {
-    std::cerr << e.what() << std::endl;
+    LOG("[ERROR]", __FUNCTION__, e.what());
     return EXIT_FAILURE;
   }
 
   return EXIT_SUCCESS;
 }
+#pragma endregion MAIN

@@ -1,3 +1,4 @@
+Illiterate Vulkan!
 App::initWindow {
   glfwInit()
   window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr)
@@ -9,6 +10,27 @@ App::initVulkan {
     }
     App::getRequiredExtensions {
       glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount)
+      vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data())
+      extensionCount:       19
+      VK_KHR_device_group_creation
+      VK_KHR_external_fence_capabilities
+      VK_KHR_external_memory_capabilities
+      VK_KHR_external_semaphore_capabilities
+      VK_KHR_get_physical_device_properties2
+      VK_KHR_get_surface_capabilities2
+      VK_KHR_surface
+      VK_KHR_win32_surface
+      VK_EXT_debug_report
+      VK_EXT_debug_utils
+      VK_EXT_swapchain_colorspace
+      VK_KHR_display
+      VK_KHR_get_display_properties2
+      VK_KHR_surface_protected_capabilities
+      VK_EXT_direct_mode_display
+      VK_EXT_surface_maintenance1
+      VK_NV_external_memory_capabilities
+      VK_KHR_portability_enumeration
+      VK_LUNARG_direct_driver_loading
     }
     validation layers are enabled
     App::populateDebugMessengerCreateInfo {
@@ -58,12 +80,30 @@ App::initVulkan {
     }
     App::chooseSwapExtent {
     }
+    imageUsage: VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+    App::findQueueFamilies {
+      queueFamilyCount :      6
+    }
+    graphics and present queues are the same
+    createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE
+    createInfo.preTransform = swapChainSupport.capabilities.currentTransform
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+    createInfo.presentMode = presentMode
+    createInfo.oldSwapchain = VK_NULL_HANDLE
+    vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain)
+    vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data())
   }
 }
 App::mainLoop {
   while (!glfwWindowShouldClose(window))
 }
 App::cleanup {
+  vkDestroySwapchainKHR(device, swapChain, nullptr)
+  vkDestroyDevice(device, nullptr)
   DestroyDebugUtilsMessengerEXT {
   }
+  vkDestroySurfaceKHR(instance, surface, nullptr)
+  vkDestroyInstance(instance, nullptr)
+  glfwDestroyWindow(window)
+  glfwTerminate()
 }
