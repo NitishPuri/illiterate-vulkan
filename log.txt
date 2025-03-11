@@ -232,9 +232,9 @@ App::initVulkan {
     poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value()
     vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool)
   }
-  App::createCommandBuffer {
+  App::createCommandBuffers {
     VkCommandBufferAllocateInfo allocInfo{}
-    vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
+    vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data())
   }
   App::createSyncObjects {
     Synchronization:
@@ -258,11 +258,11 @@ App::mainLoop {
     Present the image to the swap chain for presentation.
     --------------------------------------------------------------
     Wait for the previous frame to be finished
-    vkWaitForFences(device, 1, &inFlightFence, VK_TRUE, UINT64_MAX)
-    vkResetFences(device, 1, &inFlightFence)
+    vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX)
+    vkResetFences(device, 1, &inFlightFences[currentFrame])
     Acquire an image from the swap chain
-    vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex)
-    vkResetCommandBuffer(commandBuffer, 0)
+    vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex)
+    vkResetCommandBuffer(commandBuffers[currentFrame], 0)
     Record a command buffer which draws the scene onto the image.
     App::recordCommandBuffer {
       vkBeginCommandBuffer(commandBuffer, &beginInfo)
@@ -284,7 +284,7 @@ App::mainLoop {
     Wait for the imageAvailableSemaphore..
     Wait till the color attachment is ready for writing..
     Submit the command buffer to the graphics queue
-    vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence)
+    vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame])
     Presentation
     Wait for the renderFinishedSemaphore..
     Specify swap chain to present to.
@@ -294,9 +294,12 @@ App::mainLoop {
   vkDeviceWaitIdle(device)
 }
 App::cleanup {
-  vkDestroySemaphore(device, renderFinishedSemaphore, nullptr)
-  vkDestroySemaphore(device, imageAvailableSemaphore, nullptr)
-  vkDestroyFence(device, inFlightFence, nullptr)
+  vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr)
+  vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr)
+  vkDestroyFence(device, inFlightFences[i], nullptr)
+  vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr)
+  vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr)
+  vkDestroyFence(device, inFlightFences[i], nullptr)
   vkDestroyCommandPool(device, commandPool, nullptr)
   vkDestroyFramebuffer(device, framebuffer, nullptr)
   vkDestroyFramebuffer(device, framebuffer, nullptr)
