@@ -103,7 +103,13 @@ App::initVulkan {
     App::chooseSwapExtent {
     }
     // swap chain extent:  800 x 600
+    // minImageCount:  2
+    // recommended to request at least one more image than the minimum
+    uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1
+    // imageExtent:  800 x 600
+    // imageArrayLayers: 1 // always 1, unless Stereo 3D!!
     // imageUsage: VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+    // VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT - we render directly to images in this swapchain
     App::findQueueFamilies {
       // queueFamilyCount : 6
       vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
@@ -177,7 +183,7 @@ App::initVulkan {
   App::createGraphicsPipeline {
     // Loading shaders
     readFile {
-      // Loading filename: ./bin/shaders/shader.vert.spv fileSize: 1080 bytes
+      // Loading filename: ./bin/shaders/shader.vert.spv fileSize: 1676 bytes
     }
     readFile {
       // Loading filename: ./bin/shaders/shader.frag.spv fileSize: 572 bytes
@@ -343,6 +349,44 @@ App::initVulkan {
     vkDestroyBuffer(device, stagingBuffer, nullptr)
     vkFreeMemory(device, stagingBufferMemory, nullptr)
   }
+  App::createUniformBuffers {
+    App::createBuffer {
+      vkCreateBuffer(device, &bufferInfo, nullptr, &buffer)
+      // Get Memory Requirements
+      App::findMemoryType {
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties)
+      }
+      // Allocate Memory
+      vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory)
+      // Bind Memory
+      vkBindBufferMemory(device, buffer, bufferMemory, 0)
+    }
+    // Persistently map the buffer memory for uniforms
+    // This is a one time operation, and the memory is mapped for the lifetime of the buffer
+    vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i])
+    App::createBuffer {
+      vkCreateBuffer(device, &bufferInfo, nullptr, &buffer)
+      // Get Memory Requirements
+      App::findMemoryType {
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties)
+      }
+      // Allocate Memory
+      vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory)
+      // Bind Memory
+      vkBindBufferMemory(device, buffer, bufferMemory, 0)
+    }
+    // Persistently map the buffer memory for uniforms
+    // This is a one time operation, and the memory is mapped for the lifetime of the buffer
+    vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i])
+  }
+  App::createDescriptorPool {
+    vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool)
+  }
+  App::createDescriptorSets {
+    vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data())
+    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr)
+    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr)
+  }
   App::createCommandBuffers {
     VkCommandBufferAllocateInfo allocInfo{}
     vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data())
@@ -389,12 +433,24 @@ App::mainLoop {
       // Set dynamic states
       vkCmdSetViewport(commandBuffer, 0, 1, &viewport)
       vkCmdSetScissor(commandBuffer, 0, 1, &scissor)
+      // Bind Descriptor Sets
+      vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr)
       // FINALLY DRAW!!!
       vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0)
       // End Render Pass
       vkCmdEndRenderPass(commandBuffer)
       vkEndCommandBuffer(commandBuffer)
       // Command Buffer Recorded
+    }
+    // Update Uniform Buffers
+    App::updateUniformBuffer {
+      UniformBufferObject ubo{}
+      ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f))
+      ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f))
+      ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f)
+      // flip the y axis, as glm was designed for OpenGL
+      ubo.proj[1][1] *= -1
+      memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo))
     }
     // Wait for the imageAvailableSemaphore..
     // Wait till the color attachment is ready for writing..
@@ -418,6 +474,11 @@ App::cleanup {
     vkDestroyImageView(device, imageView, nullptr)
     vkDestroySwapchainKHR(device, swapChain, nullptr)
   }
+  vkDestroyBuffer(device, uniformBuffers[i], nullptr)
+  vkFreeMemory(device, uniformBuffersMemory[i], nullptr)
+  vkDestroyBuffer(device, uniformBuffers[i], nullptr)
+  vkFreeMemory(device, uniformBuffersMemory[i], nullptr)
+  vkDestroyDescriptorPool(device, descriptorPool, nullptr)
   vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr)
   vkDestroyBuffer(device, vertexBuffer, nullptr)
   vkFreeMemory(device, vertexBufferMemory, nullptr)
