@@ -147,7 +147,7 @@ class OneTimeLogger {
   x
 #define LOG(...) Logger::log("//", __VA_ARGS__)
 #define LOGFN_ONCE OneTimeLogger otl(__FUNCTION__)
-#define LOG_ONCE(...) otl.logOnce(__VA_ARGS__)
+#define LOG_ONCE(...) otl.logOnce("//", __VA_ARGS__)
 #define LOGCALL_ONCE(x) \
   otl.logOnce(#x);      \
   x

@@ -786,7 +786,7 @@ class App {
   void createGraphicsPipeline() {
     LOGFN;
 
-    LOG("Loading shaders, can wither load pre compiled shaders, or compile at runtime to SPIR-V");
+    LOG("Loading shaders");
     auto vertShaderCode = readFile("./bin/shaders/shader.vert.spv");
     auto fragShaderCode = readFile("./bin/shaders/shader.frag.spv");
 

@@ -172,7 +172,7 @@ App::initVulkan {
     vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass)
   }
   App::createGraphicsPipeline {
-    // Loading shaders, can wither load pre compiled shaders, or compile at runtime to SPIR-V
+    // Loading shaders
     readFile {
       // Loading filename: ./bin/shaders/shader.vert.spv fileSize: 1080 bytes
     }
@@ -356,50 +356,50 @@ App::initVulkan {
 App::mainLoop {
   while (!glfwWindowShouldClose(window))
   App::drawFrame {
-    --------------------------------------------------------------
-    Outline of a frame..
-    Wait for the previous frame to be finished
-    Acquire an image from the swap chain
-    Record a command buffer which draws the scene onto the image.
-    Submit the command buffer to the graphics queue.
-    Present the image to the swap chain for presentation.
-    --------------------------------------------------------------
-    Wait for the previous frame to be finished
+    // --------------------------------------------------------------
+    // Outline of a frame..
+    // Wait for the previous frame to be finished
+    // Acquire an image from the swap chain
+    // Record a command buffer which draws the scene onto the image.
+    // Submit the command buffer to the graphics queue.
+    // Present the image to the swap chain for presentation.
+    // --------------------------------------------------------------
+    // Wait for the previous frame to be finished
     vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX)
-    Acquire an image from the swap chain
+    // Acquire an image from the swap chain
     VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex)
     vkResetFences(device, 1, &inFlightFences[currentFrame])
     vkResetCommandBuffer(commandBuffers[currentFrame], 0)
-    Record a command buffer which draws the scene onto the image.
+    // Record a command buffer which draws the scene onto the image.
     App::recordCommandBuffer {
       vkBeginCommandBuffer(commandBuffer, &beginInfo)
-      Start Render Pass
+      // Start Render Pass
       VkRenderPassBeginInfo renderPassInfo{}
       vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE)
-      Bind Pipeline
+      // Bind Pipeline
       vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline)
-      Bind Vertex Buffer
+      // Bind Vertex Buffer
       vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets)
-      Bind Index Buffer
+      // Bind Index Buffer
       vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16)
-      Set dynamic states
+      // Set dynamic states
       vkCmdSetViewport(commandBuffer, 0, 1, &viewport)
       vkCmdSetScissor(commandBuffer, 0, 1, &scissor)
-      FINALLY DRAW!!!
+      // FINALLY DRAW!!!
       vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0)
-      End Render Pass
+      // End Render Pass
       vkCmdEndRenderPass(commandBuffer)
       vkEndCommandBuffer(commandBuffer)
-      Command Buffer Recorded
+      // Command Buffer Recorded
     }
-    Wait for the imageAvailableSemaphore..
-    Wait till the color attachment is ready for writing..
-    Submit the command buffer to the graphics queue
+    // Wait for the imageAvailableSemaphore..
+    // Wait till the color attachment is ready for writing..
+    // Submit the command buffer to the graphics queue
     vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame])
-    Presentation
-    Wait for the renderFinishedSemaphore..
-    Specify swap chain to present to.
-    Present the image to the swap chain for presentation.
+    // Presentation
+    // Wait for the renderFinishedSemaphore..
+    // Specify swap chain to present to.
+    // Present the image to the swap chain for presentation.
     result = vkQueuePresentKHR(presentQueue, &presentInfo)
   }
   vkDeviceWaitIdle(device)
