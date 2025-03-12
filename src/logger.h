@@ -3,8 +3,8 @@
 #include <stack>
 #include <unordered_set>
 
-constexpr bool LOG_TO_README = true;
-const char* logFileName = LOG_TO_README ? "README.md" : "log.hpp";
+// extern constexpr bool LOG_TO_README;
+extern const char* logFileName;  // = LOG_TO_README ? "README.md" : "log.hpp";
 
 class Logger {
  public:

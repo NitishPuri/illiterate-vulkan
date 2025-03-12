@@ -48,6 +48,20 @@ target_link_libraries(illiterate-vulkan
     ${Vulkan_LIBRARIES}
 )
 
+
+#############Compute
+add_executable(illiterate-compute src/compute.cpp)
+target_include_directories(illiterate-compute PUBLIC
+    ${GLFW_INCLUDE}
+)
+target_link_directories(illiterate-compute PUBLIC ${GLFW_LIB_DIR})
+target_link_libraries(illiterate-compute
+    glfw3
+    ${Vulkan_LIBRARIES}
+)
+#############Compute
+
+
 # add_executable(vulkan-tut src/main2.cpp)
 # target_include_directories(vulkan-tut PUBLIC
 #     ${GLFW_INCLUDE}
@@ -58,3 +72,4 @@ target_link_libraries(illiterate-vulkan
 #     glfw3
 #     ${Vulkan_LIBRARIES}
 # )
+

@@ -13,6 +13,8 @@
 #include <unordered_map>
 #include <vector>
 
+constexpr bool LOG_TO_README = true;
+const char* logFileName = LOG_TO_README ? "README.md" : "log.hpp";
 #include "logger.h"
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -656,6 +658,7 @@ class App {
 
     VkPhysicalDeviceFeatures deviceFeatures{};
     deviceFeatures.samplerAnisotropy = VK_TRUE;
+    deviceFeatures.sampleRateShading = VK_TRUE;
 
     VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -1001,7 +1004,7 @@ class App {
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
     multisampling.rasterizationSamples = msaaSamples;
-    multisampling.minSampleShading = 1.0f;           // Optional
+    multisampling.minSampleShading = .2f;
     multisampling.pSampleMask = nullptr;             // Optional
     multisampling.alphaToCoverageEnable = VK_FALSE;  // Optional
     multisampling.alphaToOneEnable = VK_FALSE;       // Optional
