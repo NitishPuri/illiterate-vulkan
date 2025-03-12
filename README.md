@@ -171,6 +171,9 @@ App::initVulkan {
     VkRenderPassCreateInfo renderPassInfo{}
     vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass)
   }
+  App::createDescriptorLayout {
+    vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout)
+  }
   App::createGraphicsPipeline {
     // Loading shaders
     readFile {
@@ -216,6 +219,7 @@ App::initVulkan {
     // Setup dynamic states
     // Pipeline Layout, for uniforms and push constants
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{}
+    pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout
     vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout)
     // Create Graphics Pipeline
     // Graphics Pipeline, the final pipeline object that will be used in rendering
@@ -414,6 +418,7 @@ App::cleanup {
     vkDestroyImageView(device, imageView, nullptr)
     vkDestroySwapchainKHR(device, swapChain, nullptr)
   }
+  vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr)
   vkDestroyBuffer(device, vertexBuffer, nullptr)
   vkFreeMemory(device, vertexBufferMemory, nullptr)
   vkDestroyBuffer(device, indexBuffer, nullptr)
