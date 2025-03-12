@@ -389,6 +389,8 @@ App::initVulkan {
       }
     }
     App::generateMipmaps {
+      // Check if image format supports linear blitting
+      vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat, &formatProperties)
       App::beginSingleTimeCommands {
         vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
         vkBeginCommandBuffer(commandBuffer, &beginInfo)

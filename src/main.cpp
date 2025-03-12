@@ -1555,6 +1555,9 @@ class App {
     samplerInfo.compareEnable = VK_FALSE;
     samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.minLod = 0;  // Optional
+    samplerInfo.maxLod = static_cast<float>(mipLevels);
+    samplerInfo.mipLodBias = 0;  // Optional
 
     if (LOGCALL(vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler)) != VK_SUCCESS) {
       throw std::runtime_error("failed to create texture sampler!");
@@ -1615,15 +1618,22 @@ class App {
     // LOG("Transition Image Layout to Shader Read Only");
     // transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
     //                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
-    generateMipmaps(textureImage, texWidth, texHeight, mipLevels);
+    generateMipmaps(textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
 
     LOG("Cleanup");
     LOGCALL(vkDestroyBuffer(device, stagingBuffer, nullptr));
     LOGCALL(vkFreeMemory(device, stagingBufferMemory, nullptr));
   }
 
-  void generateMipmaps(VkImage image, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
+  void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels) {
     LOGFN;
+
+    LOG("Check if image format supports linear blitting");
+    VkFormatProperties formatProperties;
+    LOGCALL(vkGetPhysicalDeviceFormatProperties(physicalDevice, imageFormat, &formatProperties));
+    if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
+      throw std::runtime_error("texture image format does not support linear blitting!");
+    }
 
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
