@@ -253,6 +253,13 @@ App::initVulkan {
     poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value()
     vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool)
   }
+  App::createTextureImage {
+    // Create image object backed by device memory.
+    // Fill it with pixels from an image file.
+    // Create a image sampler.
+    // Add a combined image sampler descriptor to sample colors from the texture.
+    // We will also see how layout transitions work on images using pipeline barriers.
+  }
   App::createVertexBuffer {
     // Create Host Visible Staging Buffer
     App::createBuffer {

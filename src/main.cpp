@@ -16,6 +16,9 @@
 
 #include "logger.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -189,6 +192,7 @@ class App {
     createGraphicsPipeline();
     createFrameBuffers();
     createCommandPool();
+    createTextureImage();
     createVertexBuffer();
     createIndexBuffer();
     createUniformBuffers();
@@ -1366,6 +1370,18 @@ class App {
   }
 
 #pragma endregion UNIFORM_BUFFERS
+
+#pragma region TEXTURES
+  void createTextureImage() {
+    LOGFN;
+
+    LOG("Create image object backed by device memory.");
+    LOG("Fill it with pixels from an image file.");
+    LOG("Create a image sampler.");
+    LOG("Add a combined image sampler descriptor to sample colors from the texture.");
+    LOG("We will also see how layout transitions work on images using pipeline barriers.");
+  }
+#pragma endregion TEXTURES
 
 #pragma region COMMAND_BUFFERS
   void createCommandPool() {
