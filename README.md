@@ -152,7 +152,8 @@ App::initVulkan {
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE
     // layout transition before and after render pass
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
-    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    // Transitions to Color attachment optimal for rendering, but cannot be presented directly
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
     // which attachment to reference by its index in the attachment descriptions array
     colorAttachmentRef.attachment = 0
     // layout the attachment will have during a subpass
@@ -177,17 +178,19 @@ App::initVulkan {
     depthAttachmentRef.attachment = 1
     // layout the attachment will have during a subpass
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+    // Resolve Attachment Description
     // Subpass Description
     // subpass dependencies, for layout transitions
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS
     subpass.colorAttachmentCount = 1
     subpass.pColorAttachments = &colorAttachmentRef
     subpass.pDepthStencilAttachment = &depthAttachmentRef
+    subpass.pResolveAttachments = &colorAttachmentResolveRef
     // dependency between the subpass and the external render pass
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL
     dependency.dstSubpass = 0
     dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
-    dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+    dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
     dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
     // Render Pass
@@ -268,6 +271,26 @@ App::initVulkan {
     poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value()
     vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool)
   }
+  App::createColorResources {
+    App::createImage {
+      imageInfo.format = format
+      imageInfo.tiling = tiling
+      imageInfo.samples = numSamples
+      // Flags can be used to specify sparse images, mipmaps, etc.
+      imageInfo.flags = 0
+      vkCreateImage(device, &imageInfo, nullptr, &image)
+      App::findMemoryType {
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties)
+      }
+      // Allocate Memory for Image
+      vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory)
+      // Bind Memory to Image
+      vkBindImageMemory(device, image, imageMemory, 0)
+    }
+    App::createImageView {
+      vkCreateImageView(device, &viewInfo, nullptr, &imageView)
+    }
+  }
   App::createDepthResources {
     App::findDepthFormat {
       App::findSupportedFormats {
@@ -277,8 +300,7 @@ App::initVulkan {
     App::createImage {
       imageInfo.format = format
       imageInfo.tiling = tiling
-      // No multisampling
-      imageInfo.samples = VK_SAMPLE_COUNT_1_BIT
+      imageInfo.samples = numSamples
       // Flags can be used to specify sparse images, mipmaps, etc.
       imageInfo.flags = 0
       vkCreateImage(device, &imageInfo, nullptr, &image)
@@ -349,8 +371,7 @@ App::initVulkan {
     App::createImage {
       imageInfo.format = format
       imageInfo.tiling = tiling
-      // No multisampling
-      imageInfo.samples = VK_SAMPLE_COUNT_1_BIT
+      imageInfo.samples = numSamples
       // Flags can be used to specify sparse images, mipmaps, etc.
       imageInfo.flags = 0
       vkCreateImage(device, &imageInfo, nullptr, &image)
@@ -637,6 +658,9 @@ App::mainLoop {
 }
 App::cleanup {
   App::cleanupSwapChain {
+    vkDestroyImageView(device, colorImageView, nullptr)
+    vkDestroyImage(device, colorImage, nullptr)
+    vkFreeMemory(device, colorImageMemory, nullptr)
     vkDestroyImageView(device, depthImageView, nullptr)
     vkDestroyImage(device, depthImage, nullptr)
     vkFreeMemory(device, depthImageMemory, nullptr)

@@ -239,6 +239,7 @@ class App {
     createDescriptorSetLayout();
     createGraphicsPipeline();
     createCommandPool();
+    createColorResources();
     createDepthResources();
     createFrameBuffers();
     createTextureImage();
@@ -380,6 +381,10 @@ class App {
   VkImageView depthImageView;
 
   VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+
+  VkImage colorImage;
+  VkDeviceMemory colorImageMemory;
+  VkImageView colorImageView;
 
   bool framebbufferResized = false;
 
@@ -832,6 +837,10 @@ class App {
   void cleanupSwapChain() {
     LOGFN;
 
+    LOGCALL(vkDestroyImageView(device, colorImageView, nullptr));
+    LOGCALL(vkDestroyImage(device, colorImage, nullptr));
+    LOGCALL(vkFreeMemory(device, colorImageMemory, nullptr));
+
     LOGCALL(vkDestroyImageView(device, depthImageView, nullptr));
     LOGCALL(vkDestroyImage(device, depthImage, nullptr));
     LOGCALL(vkFreeMemory(device, depthImageMemory, nullptr));
@@ -862,6 +871,8 @@ class App {
 
     createSwapChain();
     createImageViews();
+    createColorResources();
+    createDepthResources();
     createFrameBuffers();
   }
 
@@ -989,7 +1000,7 @@ class App {
     LOGCALL(VkPipelineMultisampleStateCreateInfo multisampling{});
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.rasterizationSamples = msaaSamples;
     multisampling.minSampleShading = 1.0f;           // Optional
     multisampling.pSampleMask = nullptr;             // Optional
     multisampling.alphaToCoverageEnable = VK_FALSE;  // Optional
@@ -1118,7 +1129,7 @@ class App {
     LOG("Color Attachment Description");
     VkAttachmentDescription colorAttachment{};
     colorAttachment.format = swapChainImageFormat;
-    colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachment.samples = msaaSamples;
     LOG("clear the values to a constant at the start");
     LOGCALL(colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR);
     LOG("store the values to memory for reading later");
@@ -1128,7 +1139,8 @@ class App {
     LOGCALL(colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE);
     LOG("layout transition before and after render pass");
     LOGCALL(colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED);
-    LOGCALL(colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    LOG("Transitions to Color attachment optimal for rendering, but cannot be presented directly");
+    LOGCALL(colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     VkAttachmentReference colorAttachmentRef{};
     LOG("which attachment to reference by its index in the attachment descriptions array");
@@ -1139,7 +1151,7 @@ class App {
     LOG("Depth Attachment Description");
     VkAttachmentDescription depthAttachment{};
     depthAttachment.format = findDepthFormat();
-    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttachment.samples = msaaSamples;
     LOG("clear the values to a constant at the start");
     LOGCALL(depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR);
     LOG("store the values to memory for reading later");
@@ -1157,6 +1169,21 @@ class App {
     LOG("layout the attachment will have during a subpass");
     LOGCALL(depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
+    LOG("Resolve Attachment Description");
+    VkAttachmentDescription colorAttachmentResolve{};
+    colorAttachmentResolve.format = swapChainImageFormat;
+    colorAttachmentResolve.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttachmentResolve.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachmentResolve.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttachmentResolve.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttachmentResolve.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttachmentResolve.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttachmentResolve.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference colorAttachmentResolveRef{};
+    colorAttachmentResolveRef.attachment = 2;
+    colorAttachmentResolveRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
     // Subpasses
     LOG("Subpass Description");
     VkSubpassDescription subpass{};
@@ -1165,6 +1192,7 @@ class App {
     LOGCALL(subpass.colorAttachmentCount = 1);
     LOGCALL(subpass.pColorAttachments = &colorAttachmentRef);
     LOGCALL(subpass.pDepthStencilAttachment = &depthAttachmentRef);
+    LOGCALL(subpass.pResolveAttachments = &colorAttachmentResolveRef);
 
     VkSubpassDependency dependency{};
     LOG("dependency between the subpass and the external render pass");
@@ -1172,7 +1200,8 @@ class App {
     LOGCALL(dependency.dstSubpass = 0);
     LOGCALL(dependency.srcStageMask =
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
-    LOGCALL(dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+    LOGCALL(dependency.srcAccessMask =
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
     LOGCALL(dependency.dstStageMask =
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
     LOGCALL(dependency.dstAccessMask =
@@ -1180,7 +1209,7 @@ class App {
 
     // Render pass
     LOG("Render Pass");
-    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+    std::array<VkAttachmentDescription, 3> attachments = {colorAttachment, depthAttachment, colorAttachmentResolve};
     LOGCALL(VkRenderPassCreateInfo renderPassInfo{});
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -1203,7 +1232,7 @@ class App {
     LOGCALL(swapChainFrameBuffers.resize(swapChainImageViews.size()));
 
     for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-      std::array<VkImageView, 2> attachments = {swapChainImageViews[i], depthImageView};
+      std::array<VkImageView, 3> attachments = {colorImageView, depthImageView, swapChainImageViews[i]};
 
       VkFramebufferCreateInfo framebufferInfo{};
       framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1608,7 +1637,7 @@ class App {
     LOG("Create Image");
     LOG("Use the same format as the pixels in the buffer");
     LOG("Tiling optimal for texels accessed in a coherent pattern");
-    createImage(texWidth, texHeight, mipLevels, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
+    createImage(texWidth, texHeight, mipLevels, VK_SAMPLE_COUNT_1_BIT, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 
@@ -1704,9 +1733,9 @@ class App {
     endSingleTimeCommands(commandBuffer);
   }
 
-  void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling,
-                   VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image,
-                   VkDeviceMemory& imageMemory) {
+  void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples,
+                   VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+                   VkImage& image, VkDeviceMemory& imageMemory) {
     LOGFN;
 
     VkImageCreateInfo imageInfo{};
@@ -1721,8 +1750,7 @@ class App {
     LOGCALL(imageInfo.tiling = tiling);
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage = usage;
-    LOG("No multisampling");
-    LOGCALL(imageInfo.samples = VK_SAMPLE_COUNT_1_BIT);
+    LOGCALL(imageInfo.samples = numSamples);
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     LOG("Flags can be used to specify sparse images, mipmaps, etc.");
@@ -1855,6 +1883,17 @@ class App {
     }
 
     return VK_SAMPLE_COUNT_1_BIT;
+  }
+
+  void createColorResources() {
+    LOGFN;
+
+    VkFormat colorFormat = swapChainImageFormat;
+
+    createImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples, colorFormat, VK_IMAGE_TILING_OPTIMAL,
+                VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, colorImage, colorImageMemory);
+    colorImageView = createImageView(colorImage, colorFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
   }
 #pragma endregion MSAA
 
@@ -2035,7 +2074,7 @@ class App {
 
     VkFormat depthFormat = findDepthFormat();
 
-    createImage(swapChainExtent.width, swapChainExtent.height, 1, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+    createImage(swapChainExtent.width, swapChainExtent.height, 1, msaaSamples, depthFormat, VK_IMAGE_TILING_OPTIMAL,
                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage,
                 depthImageMemory);
     depthImageView = createImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
