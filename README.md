@@ -65,7 +65,7 @@ App::initVulkan {
     // Available Devices:  2
     App::isDeviceSuitable {
       App::findQueueFamilies {
-        // queueFamilyCount : 6
+        // queueFamilyCount : 3
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
         vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport)
         // found queue families 0 0
@@ -79,11 +79,11 @@ App::initVulkan {
         vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr)
       }
     }
-    // found suitable device  NVIDIA GeForce RTX 3060 Laptop GPU
+    // found suitable device  AMD Radeon(TM) Graphics
   }
   App::createLogicalDevice {
     App::findQueueFamilies {
-      // queueFamilyCount : 6
+      // queueFamilyCount : 3
       vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
       vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport)
       // found queue families 0 0
@@ -103,7 +103,7 @@ App::initVulkan {
     App::chooseSwapExtent {
     }
     // swap chain extent:  800 x 600
-    // minImageCount:  2
+    // minImageCount:  1
     // recommended to request at least one more image than the minimum
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1
     // imageExtent:  800 x 600
@@ -111,7 +111,7 @@ App::initVulkan {
     // imageUsage: VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
     // VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT - we render directly to images in this swapchain
     App::findQueueFamilies {
-      // queueFamilyCount : 6
+      // queueFamilyCount : 3
       vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
       vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport)
       // found queue families 0 0
@@ -127,13 +127,7 @@ App::initVulkan {
   }
   App::createImageViews {
     swapChainImageViews.resize(swapChainImages.size())
-    // swapChainImages.size():  3
-    createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D
-    // format:  50
-    // components: VK_COMPONENT_SWIZZLE_IDENTITY
-    // No mipmapping or multiple layers
-    createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
-    vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i])
+    // swapChainImages.size():  2
     createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D
     // format:  50
     // components: VK_COMPONENT_SWIZZLE_IDENTITY
@@ -239,11 +233,10 @@ App::initVulkan {
     swapChainFrameBuffers.resize(swapChainImageViews.size())
     vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
     vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
-    vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
   }
   App::createCommandPool {
     App::findQueueFamilies {
-      // queueFamilyCount : 6
+      // queueFamilyCount : 3
       vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
       vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport)
       // found queue families 0 0
@@ -301,6 +294,62 @@ App::initVulkan {
       // Bind Memory to Image
       vkBindImageMemory(device, image, imageMemory, 0)
     }
+    // Transition Image Layout to Transfer Destination
+    App::transitionImageLayout {
+      App::beginSingleTimeCommands {
+        // Create a temporary command buffer for one time operations
+        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
+        vkBeginCommandBuffer(commandBuffer, &beginInfo)
+      }
+      // Pipeline Barrier
+      // Specify the transition to be executed in the command buffer
+      vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier)
+      App::endSingleTimeCommands {
+        // End the temporary command buffer and submit it to the queue
+        vkEndCommandBuffer(commandBuffer)
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
+        vkQueueWaitIdle(graphicsQueue)
+        // Free the temporary command buffer
+      }
+    }
+    // Copy Buffer to Image
+    App::copyBufferToImage {
+      App::beginSingleTimeCommands {
+        // Create a temporary command buffer for one time operations
+        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
+        vkBeginCommandBuffer(commandBuffer, &beginInfo)
+      }
+      // Copy Buffer to Image
+      vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region)
+      App::endSingleTimeCommands {
+        // End the temporary command buffer and submit it to the queue
+        vkEndCommandBuffer(commandBuffer)
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
+        vkQueueWaitIdle(graphicsQueue)
+        // Free the temporary command buffer
+      }
+    }
+    // Transition Image Layout to Shader Read Only
+    App::transitionImageLayout {
+      App::beginSingleTimeCommands {
+        // Create a temporary command buffer for one time operations
+        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
+        vkBeginCommandBuffer(commandBuffer, &beginInfo)
+      }
+      // Pipeline Barrier
+      // Specify the transition to be executed in the command buffer
+      vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier)
+      App::endSingleTimeCommands {
+        // End the temporary command buffer and submit it to the queue
+        vkEndCommandBuffer(commandBuffer)
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
+        vkQueueWaitIdle(graphicsQueue)
+        // Free the temporary command buffer
+      }
+    }
+    // Cleanup
+    vkDestroyBuffer(device, stagingBuffer, nullptr)
+    vkFreeMemory(device, stagingBufferMemory, nullptr)
   }
   App::createVertexBuffer {
     // Create Host Visible Staging Buffer
@@ -333,19 +382,20 @@ App::initVulkan {
     }
     // Copy Vertex Data to Staging Buffer
     App::copyBuffer {
-      // Command Buffer for Buffer Copy
-      vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
-      // Begin Command Buffer
-      vkBeginCommandBuffer(commandBuffer, &beginInfo)
+      App::beginSingleTimeCommands {
+        // Create a temporary command buffer for one time operations
+        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
+        vkBeginCommandBuffer(commandBuffer, &beginInfo)
+      }
       // Copy Buffer
       vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion)
-      // End Command Buffer
-      vkEndCommandBuffer(commandBuffer)
-      // Submit Command Buffer
-      vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
-      vkQueueWaitIdle(graphicsQueue)
-      // Free Command Buffer
-      vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer)
+      App::endSingleTimeCommands {
+        // End the temporary command buffer and submit it to the queue
+        vkEndCommandBuffer(commandBuffer)
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
+        vkQueueWaitIdle(graphicsQueue)
+        // Free the temporary command buffer
+      }
     }
     vkDestroyBuffer(device, stagingBuffer, nullptr)
     vkFreeMemory(device, stagingBufferMemory, nullptr)
@@ -381,19 +431,20 @@ App::initVulkan {
     }
     // Copy Index Data to Staging Buffer
     App::copyBuffer {
-      // Command Buffer for Buffer Copy
-      vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
-      // Begin Command Buffer
-      vkBeginCommandBuffer(commandBuffer, &beginInfo)
+      App::beginSingleTimeCommands {
+        // Create a temporary command buffer for one time operations
+        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
+        vkBeginCommandBuffer(commandBuffer, &beginInfo)
+      }
       // Copy Buffer
       vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion)
-      // End Command Buffer
-      vkEndCommandBuffer(commandBuffer)
-      // Submit Command Buffer
-      vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
-      vkQueueWaitIdle(graphicsQueue)
-      // Free Command Buffer
-      vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer)
+      App::endSingleTimeCommands {
+        // End the temporary command buffer and submit it to the queue
+        vkEndCommandBuffer(commandBuffer)
+        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
+        vkQueueWaitIdle(graphicsQueue)
+        // Free the temporary command buffer
+      }
     }
     vkDestroyBuffer(device, stagingBuffer, nullptr)
     vkFreeMemory(device, stagingBufferMemory, nullptr)
@@ -518,12 +569,12 @@ App::cleanup {
   App::cleanupSwapChain {
     vkDestroyFramebuffer(device, framebuffer, nullptr)
     vkDestroyFramebuffer(device, framebuffer, nullptr)
-    vkDestroyFramebuffer(device, framebuffer, nullptr)
-    vkDestroyImageView(device, imageView, nullptr)
     vkDestroyImageView(device, imageView, nullptr)
     vkDestroyImageView(device, imageView, nullptr)
     vkDestroySwapchainKHR(device, swapChain, nullptr)
   }
+  vkDestroyImage(device, textureImage, nullptr)
+  vkFreeMemory(device, textureImageMemory, nullptr)
   vkDestroyBuffer(device, uniformBuffers[i], nullptr)
   vkFreeMemory(device, uniformBuffersMemory[i], nullptr)
   vkDestroyBuffer(device, uniformBuffers[i], nullptr)
@@ -545,14 +596,6 @@ App::cleanup {
   vkDestroyFence(device, inFlightFences[i], nullptr)
   vkDestroyCommandPool(device, commandPool, nullptr)
   vkDestroyDevice(device, nullptr)
-  // [VALIDATION ERROR] validation layer:  Validation Error: [ VUID-vkDestroyDevice-device-05137 ] Object 0: handle = 0x9fde6b0000000014, type = VK_OBJECT_TYPE_BUFFER; | MessageID = 0x4872eaa0 | vkDestroyDevice(): OBJ ERROR : For VkDevice 0x1d22efa98a0[], VkBuffer 0x9fde6b0000000014[] has not been destroyed.
-The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://vulkan.lunarg.com/doc/view/1.4.304.1/windows/antora/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
-  // [VALIDATION ERROR] validation layer:  Validation Error: [ VUID-vkDestroyDevice-device-05137 ] Object 0: handle = 0xd897d90000000016, type = VK_OBJECT_TYPE_IMAGE; | MessageID = 0x4872eaa0 | vkDestroyDevice(): OBJ ERROR : For VkDevice 0x1d22efa98a0[], VkImage 0xd897d90000000016[] has not been destroyed.
-The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://vulkan.lunarg.com/doc/view/1.4.304.1/windows/antora/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
-  // [VALIDATION ERROR] validation layer:  Validation Error: [ VUID-vkDestroyDevice-device-05137 ] Object 0: handle = 0xdd3a8a0000000015, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x4872eaa0 | vkDestroyDevice(): OBJ ERROR : For VkDevice 0x1d22efa98a0[], VkDeviceMemory 0xdd3a8a0000000015[] has not been destroyed.
-The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://vulkan.lunarg.com/doc/view/1.4.304.1/windows/antora/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
-  // [VALIDATION ERROR] validation layer:  Validation Error: [ VUID-vkDestroyDevice-device-05137 ] Object 0: handle = 0x84c0580000000017, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x4872eaa0 | vkDestroyDevice(): OBJ ERROR : For VkDevice 0x1d22efa98a0[], VkDeviceMemory 0x84c0580000000017[] has not been destroyed.
-The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://vulkan.lunarg.com/doc/view/1.4.304.1/windows/antora/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
   DestroyDebugUtilsMessengerEXT {
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT")
     func(instance, debugMessenger, pAllocator)
