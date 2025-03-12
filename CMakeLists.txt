@@ -21,7 +21,7 @@ set(STB_INCLUDE ${PROJECT_SOURCE_DIR}/ext/stb)
 
 
 file(GLOB SOURCES
-    src/*.cpp
+    src/main.cpp
     src/shaders/*.vert
     src/shaders/*.frag
 )
@@ -30,14 +30,24 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /NODEFAULTLIB:MSVCRT")
 
 add_executable(illiterate-vulkan ${SOURCES})
 
+
 target_include_directories(illiterate-vulkan PUBLIC
     ${GLFW_INCLUDE}
     ${STB_INCLUDE}
 )
-
-
 target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_LIB_DIR})
 target_link_libraries(illiterate-vulkan
     glfw3
     ${Vulkan_LIBRARIES}
 )
+
+# add_executable(vulkan-tut src/main2.cpp)
+# target_include_directories(vulkan-tut PUBLIC
+#     ${GLFW_INCLUDE}
+#     ${STB_INCLUDE}
+# )
+# target_link_directories(vulkan-tut PUBLIC ${GLFW_LIB_DIR})
+# target_link_libraries(vulkan-tut
+#     glfw3
+#     ${Vulkan_LIBRARIES}
+# )

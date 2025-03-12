@@ -168,16 +168,18 @@ App::initVulkan {
     VkRenderPassCreateInfo renderPassInfo{}
     vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass)
   }
-  App::createDescriptorLayout {
+  App::createDescriptorSetLayout {
+    // Uniform Buffer Object
+    // Texture Sampler
     vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout)
   }
   App::createGraphicsPipeline {
     // Loading shaders
     readFile {
-      // Loading filename: ./bin/shaders/shader.vert.spv fileSize: 1676 bytes
+      // Loading filename: ./bin/shaders/shader.vert.spv fileSize: 1836 bytes
     }
     readFile {
-      // Loading filename: ./bin/shaders/shader.frag.spv fileSize: 572 bytes
+      // Loading filename: ./bin/shaders/shader.frag.spv fileSize: 728 bytes
     }
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode)
     App::createShaderModule {
@@ -194,6 +196,7 @@ App::initVulkan {
     Vertex::getAttributeDescriptions {
       attributeDescriptions[0].offset = offsetof(Vertex, pos)
       attributeDescriptions[1].offset = offsetof(Vertex, color)
+      attributeDescriptions[2].offset = offsetof(Vertex, texCoord)
     }
     // Input Assembly
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{}
@@ -223,6 +226,7 @@ App::initVulkan {
     // Here we are combining : shaders, fixed function stages(vertex info, input assembly, viewport syate, rasterizer, multisampleing, depthStencil and color blending), pipeline layout and render pass
     VkGraphicsPipelineCreateInfo pipelineInfo{}
     vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline)
+    // [VALIDATION ERROR] validation layer:  Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed ] Object 0: handle = 0xcad092000000000d, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0x9805298c | vkCreateGraphicsPipelines(): pCreateInfos[0] fragment shader writes to output location 1 with no matching attachment
     vkDestroyShaderModule(device, vertShaderModule, nullptr)
     vkDestroyShaderModule(device, fragShaderModule, nullptr)
   }
@@ -490,8 +494,12 @@ App::initVulkan {
   }
   App::createDescriptorSets {
     vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data())
-    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr)
-    vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr)
+    // Uniform Buffer
+    // Texture Sampler
+    vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr)
+    // Uniform Buffer
+    // Texture Sampler
+    vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr)
   }
   App::createCommandBuffers {
     VkCommandBufferAllocateInfo allocInfo{}
