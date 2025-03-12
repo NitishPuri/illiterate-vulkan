@@ -14,7 +14,7 @@ class Logger {
   }
 
  private:
-  Logger() : logFile("log.txt") {
+  Logger() : logFile("log.hpp") {
     if (!logFile.is_open()) {
       std::cerr << "Failed to open log file" << std::endl;
     }
@@ -134,7 +134,7 @@ class OneTimeLogger {
 #define LOGCALL(x) \
   Logger::log(#x); \
   x
-#define LOG(...) Logger::log(__VA_ARGS__)
+#define LOG(...) Logger::log("//", __VA_ARGS__)
 #define LOGFN_ONCE OneTimeLogger otl(__FUNCTION__)
 #define LOG_ONCE(...) otl.logOnce(__VA_ARGS__)
 #define LOGCALL_ONCE(x) \
