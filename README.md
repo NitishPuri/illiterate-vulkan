@@ -65,7 +65,7 @@ App::initVulkan {
     // Available Devices:  2
     App::isDeviceSuitable {
       App::findQueueFamilies {
-        // queueFamilyCount : 3
+        // queueFamilyCount : 6
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
         vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport)
         // found queue families 0 0
@@ -79,11 +79,11 @@ App::initVulkan {
         vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr)
       }
     }
-    // found suitable device  AMD Radeon(TM) Graphics
+    // found suitable device  NVIDIA GeForce RTX 3060 Laptop GPU
   }
   App::createLogicalDevice {
     App::findQueueFamilies {
-      // queueFamilyCount : 3
+      // queueFamilyCount : 6
       vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
       vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport)
       // found queue families 0 0
@@ -103,7 +103,7 @@ App::initVulkan {
     App::chooseSwapExtent {
     }
     // swap chain extent:  800 x 600
-    // minImageCount:  1
+    // minImageCount:  2
     // recommended to request at least one more image than the minimum
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1
     // imageExtent:  800 x 600
@@ -111,7 +111,7 @@ App::initVulkan {
     // imageUsage: VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
     // VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT - we render directly to images in this swapchain
     App::findQueueFamilies {
-      // queueFamilyCount : 3
+      // queueFamilyCount : 6
       vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
       vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport)
       // found queue families 0 0
@@ -127,19 +127,16 @@ App::initVulkan {
   }
   App::createImageViews {
     swapChainImageViews.resize(swapChainImages.size())
-    // swapChainImages.size():  2
-    createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D
-    // format:  50
-    // components: VK_COMPONENT_SWIZZLE_IDENTITY
-    // No mipmapping or multiple layers
-    createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
-    vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i])
-    createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D
-    // format:  50
-    // components: VK_COMPONENT_SWIZZLE_IDENTITY
-    // No mipmapping or multiple layers
-    createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
-    vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i])
+    // swapChainImages.size():  3
+    App::createImageView {
+      vkCreateImageView(device, &viewInfo, nullptr, &imageView)
+    }
+    App::createImageView {
+      vkCreateImageView(device, &viewInfo, nullptr, &imageView)
+    }
+    App::createImageView {
+      vkCreateImageView(device, &viewInfo, nullptr, &imageView)
+    }
   }
   App::createRenderPass {
     // clear the values to a constant at the start
@@ -233,10 +230,11 @@ App::initVulkan {
     swapChainFrameBuffers.resize(swapChainImageViews.size())
     vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
     vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
+    vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFrameBuffers[i])
   }
   App::createCommandPool {
     App::findQueueFamilies {
-      // queueFamilyCount : 3
+      // queueFamilyCount : 6
       vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
       vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport)
       // found queue families 0 0
@@ -350,6 +348,14 @@ App::initVulkan {
     // Cleanup
     vkDestroyBuffer(device, stagingBuffer, nullptr)
     vkFreeMemory(device, stagingBufferMemory, nullptr)
+  }
+  App::createTextureSampler {
+    vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler)
+  }
+  App::createTextureImageView {
+    App::createImageView {
+      vkCreateImageView(device, &viewInfo, nullptr, &imageView)
+    }
   }
   App::createVertexBuffer {
     // Create Host Visible Staging Buffer
@@ -569,10 +575,14 @@ App::cleanup {
   App::cleanupSwapChain {
     vkDestroyFramebuffer(device, framebuffer, nullptr)
     vkDestroyFramebuffer(device, framebuffer, nullptr)
+    vkDestroyFramebuffer(device, framebuffer, nullptr)
+    vkDestroyImageView(device, imageView, nullptr)
     vkDestroyImageView(device, imageView, nullptr)
     vkDestroyImageView(device, imageView, nullptr)
     vkDestroySwapchainKHR(device, swapChain, nullptr)
   }
+  vkDestroySampler(device, textureSampler, nullptr)
+  vkDestroyImageView(device, textureImageView, nullptr)
   vkDestroyImage(device, textureImage, nullptr)
   vkFreeMemory(device, textureImageMemory, nullptr)
   vkDestroyBuffer(device, uniformBuffers[i], nullptr)
