@@ -27,6 +27,9 @@ App::run {
     App::pickPhysicalDevice {
       App::isDeviceSuitable {
         App::findQueueFamilies {
+          vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
+          // Need to find queue families with graphics and compute support
+          // VK_QUEUE_GRAPHICS_BIT && VK_QUEUE_COMPUTE_BIT
         }
         App::checkDeviceExtensionSupport {
         }
@@ -36,7 +39,11 @@ App::run {
     }
     App::createLogicalDevice {
       App::findQueueFamilies {
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
+        // Need to find queue families with graphics and compute support
+        // VK_QUEUE_GRAPHICS_BIT && VK_QUEUE_COMPUTE_BIT
       }
+      vkCreateDevice(physicalDevice, &createInfo, nullptr, &device)
     }
     App::createSwapChain {
       App::querySwapChainSupport {
@@ -48,6 +55,9 @@ App::run {
       App::chooseSwapExtent {
       }
       App::findQueueFamilies {
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
+        // Need to find queue families with graphics and compute support
+        // VK_QUEUE_GRAPHICS_BIT && VK_QUEUE_COMPUTE_BIT
       }
     }
     App::createImageViews {
@@ -55,6 +65,7 @@ App::run {
     App::createRenderPass {
     }
     App::createComputeDescriptorSetLayout {
+      vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &computeDescriptorSetLayout)
     }
     App::createGraphicsPipeline {
       App::readFile {
@@ -74,28 +85,39 @@ App::run {
       }
       App::createShaderModule {
       }
+      // Creating compute pipeline
+      computeShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT
     }
     App::createFramebuffers {
     }
     App::createCommandPool {
       App::findQueueFamilies {
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data())
+        // Need to find queue families with graphics and compute support
+        // VK_QUEUE_GRAPHICS_BIT && VK_QUEUE_COMPUTE_BIT
       }
     }
-    App::createBuffer {
-      App::findMemoryType {
+    App::createShaderStorageBuffers {
+      // Initializing particles positions on a circle.
+      VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT
+      // Create a staging buffer used to upload data to the gpu
+      App::createBuffer {
+        App::findMemoryType {
+        }
       }
-    }
-    App::createBuffer {
-      App::findMemoryType {
+      // Copy initial particle data to all storage buffers
+      App::createBuffer {
+        App::findMemoryType {
+        }
       }
-    }
-    App::copyBuffer {
-    }
-    App::createBuffer {
-      App::findMemoryType {
+      App::copyBuffer {
       }
-    }
-    App::copyBuffer {
+      App::createBuffer {
+        App::findMemoryType {
+        }
+      }
+      App::copyBuffer {
+      }
     }
     App::createUniformBuffers {
       App::createBuffer {
@@ -110,6 +132,14 @@ App::run {
     App::createDescriptorPool {
     }
     App::createComputeDescriptorSets {
+      // Storage buffer info last frame...
+      storageBufferInfoLastFrame.buffer = shaderStorageBuffers[(i - 1) % MAX_FRAMES_IN_FLIGHT]
+      // Storage buffer for current frame...
+      storageBufferInfoCurrentFrame.buffer = shaderStorageBuffers[i]
+      // Storage buffer info last frame...
+      storageBufferInfoLastFrame.buffer = shaderStorageBuffers[(i - 1) % MAX_FRAMES_IN_FLIGHT]
+      // Storage buffer for current frame...
+      storageBufferInfoCurrentFrame.buffer = shaderStorageBuffers[i]
     }
     App::createCommandBuffers {
     }
@@ -123,9 +153,17 @@ App::run {
       App::updateUniformBuffer {
       }
       App::recordComputeCommandBuffer {
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline)
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1, &computeDescriptorSets[currentFrame], 0, nullptr)
+        // Dispatching compute shader!!!
+        vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1)
       }
+      // Submitting compute command buffer...
+      vkQueueSubmit(computeQueue, 1, &submitInfo, computeInFlightFences[currentFrame])
       App::recordCommandBuffer {
       }
+      // Submitting graphics command buffer...
+      vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame])
     }
   }
   App::cleanup {

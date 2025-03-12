@@ -456,7 +456,7 @@ class App {
     createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-    if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) {
+    if (LOGCALL(vkCreateDevice(physicalDevice, &createInfo, nullptr, &device)) != VK_SUCCESS) {
       throw std::runtime_error("failed to create logical device!");
     }
 
@@ -616,7 +616,7 @@ class App {
     layoutInfo.bindingCount = 3;
     layoutInfo.pBindings = layoutBindings.data();
 
-    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &computeDescriptorSetLayout) != VK_SUCCESS) {
+    if (LOGCALL(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &computeDescriptorSetLayout)) != VK_SUCCESS) {
       throw std::runtime_error("failed to create compute descriptor set layout!");
     }
   }
@@ -748,9 +748,10 @@ class App {
 
     VkShaderModule computeShaderModule = createShaderModule(computeShaderCode);
 
+    LOG("Creating compute pipeline");
     VkPipelineShaderStageCreateInfo computeShaderStageInfo{};
     computeShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    computeShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    LOGCALL(computeShaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT);
     computeShaderStageInfo.module = computeShaderModule;
     computeShaderStageInfo.pName = "main";
 
@@ -814,11 +815,13 @@ class App {
   }
 
   void createShaderStorageBuffers() {
+    LOGFN;
+
     // Initialize particles
     std::default_random_engine rndEngine((unsigned)time(nullptr));
     std::uniform_real_distribution<float> rndDist(0.0f, 1.0f);
 
-    // Initial particle positions on a circle
+    LOG("Initializing particles positions on a circle.");
     std::vector<Particle> particles(PARTICLE_COUNT);
     for (auto& particle : particles) {
       float r = 0.25f * sqrt(rndDist(rndEngine));
@@ -830,9 +833,9 @@ class App {
       particle.color = glm::vec4(rndDist(rndEngine), rndDist(rndEngine), rndDist(rndEngine), 1.0f);
     }
 
-    VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT;
+    LOGCALL(VkDeviceSize bufferSize = sizeof(Particle) * PARTICLE_COUNT);
 
-    // Create a staging buffer used to upload data to the gpu
+    LOG("Create a staging buffer used to upload data to the gpu");
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
     createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -847,7 +850,7 @@ class App {
     shaderStorageBuffers.resize(MAX_FRAMES_IN_FLIGHT);
     shaderStorageBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
 
-    // Copy initial particle data to all storage buffers
+    LOG("Copy initial particle data to all storage buffers");
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
       createBuffer(
           bufferSize,
@@ -929,8 +932,9 @@ class App {
       descriptorWrites[0].descriptorCount = 1;
       descriptorWrites[0].pBufferInfo = &uniformBufferInfo;
 
+      LOG("Storage buffer info last frame...");
       VkDescriptorBufferInfo storageBufferInfoLastFrame{};
-      storageBufferInfoLastFrame.buffer = shaderStorageBuffers[(i - 1) % MAX_FRAMES_IN_FLIGHT];
+      LOGCALL(storageBufferInfoLastFrame.buffer = shaderStorageBuffers[(i - 1) % MAX_FRAMES_IN_FLIGHT]);
       storageBufferInfoLastFrame.offset = 0;
       storageBufferInfoLastFrame.range = sizeof(Particle) * PARTICLE_COUNT;
 
@@ -942,8 +946,9 @@ class App {
       descriptorWrites[1].descriptorCount = 1;
       descriptorWrites[1].pBufferInfo = &storageBufferInfoLastFrame;
 
+      LOG("Storage buffer for current frame...");
       VkDescriptorBufferInfo storageBufferInfoCurrentFrame{};
-      storageBufferInfoCurrentFrame.buffer = shaderStorageBuffers[i];
+      LOGCALL(storageBufferInfoCurrentFrame.buffer = shaderStorageBuffers[i]);
       storageBufferInfoCurrentFrame.offset = 0;
       storageBufferInfoCurrentFrame.range = sizeof(Particle) * PARTICLE_COUNT;
 
@@ -1131,12 +1136,13 @@ class App {
       throw std::runtime_error("failed to begin recording compute command buffer!");
     }
 
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+    LOGCALL_ONCE(vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline));
 
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1,
-                            &computeDescriptorSets[currentFrame], 0, nullptr);
+    LOGCALL_ONCE(vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1,
+                                         &computeDescriptorSets[currentFrame], 0, nullptr));
 
-    vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1);
+    LOG_ONCE("Dispatching compute shader!!!");
+    LOGCALL_ONCE(vkCmdDispatch(commandBuffer, PARTICLE_COUNT / 256, 1, 1));
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
       throw std::runtime_error("failed to record compute command buffer!");
@@ -1201,7 +1207,8 @@ class App {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &computeFinishedSemaphores[currentFrame];
 
-    if (vkQueueSubmit(computeQueue, 1, &submitInfo, computeInFlightFences[currentFrame]) != VK_SUCCESS) {
+    LOG_ONCE("Submitting compute command buffer...");
+    if (LOGCALL_ONCE(vkQueueSubmit(computeQueue, 1, &submitInfo, computeInFlightFences[currentFrame])) != VK_SUCCESS) {
       throw std::runtime_error("failed to submit compute command buffer!");
     };
 
@@ -1238,7 +1245,8 @@ class App {
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &renderFinishedSemaphores[currentFrame];
 
-    if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+    LOG_ONCE("Submitting graphics command buffer...");
+    if (LOGCALL_ONCE(vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame])) != VK_SUCCESS) {
       throw std::runtime_error("failed to submit draw command buffer!");
     }
 
@@ -1396,7 +1404,10 @@ class App {
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+    LOGCALL(vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data()));
+
+    LOG("Need to find queue families with graphics and compute support");
+    LOG("VK_QUEUE_GRAPHICS_BIT && VK_QUEUE_COMPUTE_BIT");
 
     int i = 0;
     for (const auto& queueFamily : queueFamilies) {
