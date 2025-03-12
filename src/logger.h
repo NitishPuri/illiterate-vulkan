@@ -146,7 +146,10 @@ class OneTimeLogger {
 #ifdef NDEBUG
 #define LOGFN
 #define LOGCALL(x) x
-#define LOG(x)
+#define LOG(...)
+#define LOGFN_ONCE
+#define LOG_ONCE(...)
+#define LOGCALL_ONCE(x) x
 #else
 #define LOGFN FunctionLogger functionLogger(__FUNCTION__)
 #define LOGCALL(x) \
