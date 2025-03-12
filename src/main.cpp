@@ -72,10 +72,15 @@ struct Vertex {
   }
 };
 
-const std::vector<Vertex> vertices =       //
-    {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},  //
-     {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},   //
-     {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+const std::vector<Vertex> vertices = {
+    //
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}  //
+};
+
+const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
 #pragma endregion VERTEX_DESC
 
@@ -174,6 +179,7 @@ class App {
     createFrameBuffers();
     createCommandPool();
     createVertexBuffer();
+    createIndexBuffer();
     createCommandBuffers();
     createSyncObjects();
   }
@@ -196,6 +202,9 @@ class App {
 
     LOGCALL(vkDestroyBuffer(device, vertexBuffer, nullptr));
     LOGCALL(vkFreeMemory(device, vertexBufferMemory, nullptr));
+
+    LOGCALL(vkDestroyBuffer(device, indexBuffer, nullptr));
+    LOGCALL(vkFreeMemory(device, indexBufferMemory, nullptr));
 
     LOGCALL(vkDestroyPipeline(device, graphicsPipeline, nullptr));
     LOGCALL(vkDestroyPipelineLayout(device, pipelineLayout, nullptr));
@@ -263,6 +272,8 @@ class App {
 
   VkBuffer vertexBuffer;
   VkDeviceMemory vertexBufferMemory;
+  VkBuffer indexBuffer;
+  VkDeviceMemory indexBufferMemory;
 
   bool framebbufferResized = false;
 
@@ -1119,6 +1130,35 @@ class App {
     LOGCALL(vkFreeMemory(device, stagingBufferMemory, nullptr));
   }
 
+  void createIndexBuffer() {
+    LOGFN;
+
+    VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+    LOG("Create Host Visible Staging Buffer");
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
+                 stagingBufferMemory);
+
+    LOG("Copy Index data to Staging Buffer");
+    void* data;
+    LOGCALL(vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data));
+    LOGCALL(memcpy(data, indices.data(), (size_t)bufferSize));
+    LOGCALL(vkUnmapMemory(device, stagingBufferMemory));
+
+    LOG("Create Device Local Index Buffer");
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+
+    LOG("Copy Index Data to Staging Buffer");
+    copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+    LOGCALL(vkDestroyBuffer(device, stagingBuffer, nullptr));
+    LOGCALL(vkFreeMemory(device, stagingBufferMemory, nullptr));
+  }
+
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
     LOGFN;
 
@@ -1245,6 +1285,9 @@ class App {
     LOG_ONCE("Bind Vertex Buffer");
     LOGCALL_ONCE(vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets));
 
+    LOG_ONCE("Bind Index Buffer");
+    LOGCALL_ONCE(vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16));
+
     LOG_ONCE("Set dynamic states");
     VkViewport viewport{};
     viewport.x = 0.0f;
@@ -1261,7 +1304,8 @@ class App {
     LOGCALL_ONCE(vkCmdSetScissor(commandBuffer, 0, 1, &scissor));
 
     LOG_ONCE("FINALLY DRAW!!!");
-    LOGCALL_ONCE(vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0));
+    // LOGCALL_ONCE(vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0));
+    LOGCALL_ONCE(vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0));
 
     LOG_ONCE("End Render Pass");
     LOGCALL_ONCE(vkCmdEndRenderPass(commandBuffer));

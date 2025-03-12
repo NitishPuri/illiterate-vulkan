@@ -286,6 +286,54 @@ App::initVulkan {
     vkDestroyBuffer(device, stagingBuffer, nullptr)
     vkFreeMemory(device, stagingBufferMemory, nullptr)
   }
+  App::createIndexBuffer {
+    // Create Host Visible Staging Buffer
+    App::createBuffer {
+      vkCreateBuffer(device, &bufferInfo, nullptr, &buffer)
+      // Get Memory Requirements
+      App::findMemoryType {
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties)
+      }
+      // Allocate Memory
+      vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory)
+      // Bind Memory
+      vkBindBufferMemory(device, buffer, bufferMemory, 0)
+    }
+    // Copy Index data to Staging Buffer
+    vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data)
+    memcpy(data, indices.data(), (size_t)bufferSize)
+    vkUnmapMemory(device, stagingBufferMemory)
+    // Create Device Local Index Buffer
+    App::createBuffer {
+      vkCreateBuffer(device, &bufferInfo, nullptr, &buffer)
+      // Get Memory Requirements
+      App::findMemoryType {
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties)
+      }
+      // Allocate Memory
+      vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory)
+      // Bind Memory
+      vkBindBufferMemory(device, buffer, bufferMemory, 0)
+    }
+    // Copy Index Data to Staging Buffer
+    App::copyBuffer {
+      // Command Buffer for Buffer Copy
+      vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
+      // Begin Command Buffer
+      vkBeginCommandBuffer(commandBuffer, &beginInfo)
+      // Copy Buffer
+      vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion)
+      // End Command Buffer
+      vkEndCommandBuffer(commandBuffer)
+      // Submit Command Buffer
+      vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
+      vkQueueWaitIdle(graphicsQueue)
+      // Free Command Buffer
+      vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer)
+    }
+    vkDestroyBuffer(device, stagingBuffer, nullptr)
+    vkFreeMemory(device, stagingBufferMemory, nullptr)
+  }
   App::createCommandBuffers {
     VkCommandBufferAllocateInfo allocInfo{}
     vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data())
@@ -327,11 +375,13 @@ App::mainLoop {
       vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline)
       Bind Vertex Buffer
       vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets)
+      Bind Index Buffer
+      vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16)
       Set dynamic states
       vkCmdSetViewport(commandBuffer, 0, 1, &viewport)
       vkCmdSetScissor(commandBuffer, 0, 1, &scissor)
       FINALLY DRAW!!!
-      vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0)
+      vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0)
       End Render Pass
       vkCmdEndRenderPass(commandBuffer)
       vkEndCommandBuffer(commandBuffer)
@@ -361,6 +411,8 @@ App::cleanup {
   }
   vkDestroyBuffer(device, vertexBuffer, nullptr)
   vkFreeMemory(device, vertexBufferMemory, nullptr)
+  vkDestroyBuffer(device, indexBuffer, nullptr)
+  vkFreeMemory(device, indexBufferMemory, nullptr)
   vkDestroyPipeline(device, graphicsPipeline, nullptr)
   vkDestroyPipelineLayout(device, pipelineLayout, nullptr)
   vkDestroyRenderPass(device, renderPass, nullptr)
