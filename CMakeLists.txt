@@ -16,6 +16,8 @@ set(GLFW_LIB_DIR ${GLFW_PATH}/lib-vc2022)
 
 #STB
 set(STB_INCLUDE ${PROJECT_SOURCE_DIR}/ext/stb)
+
+set(TINYOBJLOADER_INCLUDE ${PROJECT_SOURCE_DIR}/ext/tinyobjloader)
 ################## Dependencies ##################
 
 
@@ -34,6 +36,7 @@ add_executable(illiterate-vulkan ${SOURCES})
 target_include_directories(illiterate-vulkan PUBLIC
     ${GLFW_INCLUDE}
     ${STB_INCLUDE}
+    ${TINYOBJLOADER_INCLUDE}
 )
 target_link_directories(${PROJECT_NAME} PUBLIC ${GLFW_LIB_DIR})
 target_link_libraries(illiterate-vulkan

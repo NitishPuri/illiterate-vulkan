@@ -199,10 +199,10 @@ App::initVulkan {
   App::createGraphicsPipeline {
     // Loading shaders
     readFile {
-      // Loading filename: ./bin/shaders/shader.vert.spv fileSize: 1840 bytes
+      // Loading filename: ./bin/shaders/vert.spv fileSize: 1840 bytes
     }
     readFile {
-      // Loading filename: ./bin/shaders/shader.frag.spv fileSize: 728 bytes
+      // Loading filename: ./bin/shaders/frag.spv fileSize: 728 bytes
     }
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode)
     App::createShaderModule {
@@ -321,7 +321,7 @@ App::initVulkan {
     // ----------------------------------------------------------
 
     // Load Image
-    stbi_uc* pixels = stbi_load("./res/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha)
+    stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha)
     // Create Host Visible Staging Buffer
     App::createBuffer {
       vkCreateBuffer(device, &bufferInfo, nullptr, &buffer)

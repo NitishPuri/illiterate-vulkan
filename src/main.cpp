@@ -24,6 +24,11 @@
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 const int MAX_FRAMES_IN_FLIGHT = 2;
+const std::string FRAGMENT_SHADER_PATH = "./bin/shaders/frag.spv";
+const std::string VERTEX_SHADER_PATH = "./bin/shaders/vert.spv";
+const std::string TEXTURE_PATH = "./res/texture.jpg";
+const std::string MODEL_PATH = "./res/viking_room.obj";
+// const std::string TEXTURE_PATH = "./res/viking_room.png";
 
 std::unordered_set<std::string> OneTimeLogger::loggedFunctions;
 
@@ -881,8 +886,8 @@ class App {
     LOGFN;
 
     LOG("Loading shaders");
-    auto vertShaderCode = readFile("./bin/shaders/shader.vert.spv");
-    auto fragShaderCode = readFile("./bin/shaders/shader.frag.spv");
+    auto vertShaderCode = readFile(VERTEX_SHADER_PATH);
+    auto fragShaderCode = readFile(FRAGMENT_SHADER_PATH);
 
     LOGCALL(VkShaderModule vertShaderModule = createShaderModule(vertShaderCode));
     LOGCALL(VkShaderModule fragShaderModule = createShaderModule(fragShaderCode));
@@ -1506,7 +1511,7 @@ class App {
     LOG("Load Image");
 
     int texWidth, texHeight, texChannels;
-    LOGCALL(stbi_uc* pixels = stbi_load("./res/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha));
+    LOGCALL(stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha));
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
     if (!pixels) {
