@@ -388,15 +388,17 @@ App::initVulkan {
         vkQueueWaitIdle(graphicsQueue)
       }
     }
-    // Transition Image Layout to Shader Read Only
-    App::transitionImageLayout {
+    App::generateMipmaps {
       App::beginSingleTimeCommands {
         vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
         vkBeginCommandBuffer(commandBuffer, &beginInfo)
       }
-      // Pipeline Barrier
-      // Specify the transition to be executed in the command buffer
-      vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier)
+      App::generateMipmaps {
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier)
+        vkCmdBlitImage(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR)
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier)
+      }
+      vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier)
       App::endSingleTimeCommands {
         vkEndCommandBuffer(commandBuffer)
         vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
