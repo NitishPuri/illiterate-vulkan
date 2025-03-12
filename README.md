@@ -176,7 +176,7 @@ App::initVulkan {
   App::createGraphicsPipeline {
     // Loading shaders
     readFile {
-      // Loading filename: ./bin/shaders/shader.vert.spv fileSize: 1836 bytes
+      // Loading filename: ./bin/shaders/shader.vert.spv fileSize: 1840 bytes
     }
     readFile {
       // Loading filename: ./bin/shaders/shader.frag.spv fileSize: 728 bytes
