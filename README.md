@@ -226,7 +226,6 @@ App::initVulkan {
     // Here we are combining : shaders, fixed function stages(vertex info, input assembly, viewport syate, rasterizer, multisampleing, depthStencil and color blending), pipeline layout and render pass
     VkGraphicsPipelineCreateInfo pipelineInfo{}
     vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline)
-    // [VALIDATION ERROR] validation layer:  Validation Warning: [ Undefined-Value-ShaderOutputNotConsumed ] Object 0: handle = 0xcad092000000000d, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0x9805298c | vkCreateGraphicsPipelines(): pCreateInfos[0] fragment shader writes to output location 1 with no matching attachment
     vkDestroyShaderModule(device, vertShaderModule, nullptr)
     vkDestroyShaderModule(device, fragShaderModule, nullptr)
   }
@@ -275,7 +274,7 @@ App::initVulkan {
     vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data)
     memcpy(data, pixels, static_cast<size_t>(imageSize))
     vkUnmapMemory(device, stagingBufferMemory)
-    // Free Image Data
+    // Free Image Memory
     stbi_image_free(pixels)
     // Create Image
     // Use the same format as the pixels in the buffer
@@ -288,10 +287,10 @@ App::initVulkan {
       // Flags can be used to specify sparse images, mipmaps, etc.
       imageInfo.flags = 0
       vkCreateImage(device, &imageInfo, nullptr, &image)
-      // Allocate Memory for Image
       App::findMemoryType {
         vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties)
       }
+      // Allocate Memory for Image
       vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory)
       // Bind Memory to Image
       vkBindImageMemory(device, image, imageMemory, 0)
@@ -299,7 +298,6 @@ App::initVulkan {
     // Transition Image Layout to Transfer Destination
     App::transitionImageLayout {
       App::beginSingleTimeCommands {
-        // Create a temporary command buffer for one time operations
         vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
         vkBeginCommandBuffer(commandBuffer, &beginInfo)
       }
@@ -307,34 +305,28 @@ App::initVulkan {
       // Specify the transition to be executed in the command buffer
       vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier)
       App::endSingleTimeCommands {
-        // End the temporary command buffer and submit it to the queue
         vkEndCommandBuffer(commandBuffer)
         vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
         vkQueueWaitIdle(graphicsQueue)
-        // Free the temporary command buffer
       }
     }
     // Copy Buffer to Image
     App::copyBufferToImage {
       App::beginSingleTimeCommands {
-        // Create a temporary command buffer for one time operations
         vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
         vkBeginCommandBuffer(commandBuffer, &beginInfo)
       }
       // Copy Buffer to Image
       vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region)
       App::endSingleTimeCommands {
-        // End the temporary command buffer and submit it to the queue
         vkEndCommandBuffer(commandBuffer)
         vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
         vkQueueWaitIdle(graphicsQueue)
-        // Free the temporary command buffer
       }
     }
     // Transition Image Layout to Shader Read Only
     App::transitionImageLayout {
       App::beginSingleTimeCommands {
-        // Create a temporary command buffer for one time operations
         vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
         vkBeginCommandBuffer(commandBuffer, &beginInfo)
       }
@@ -342,24 +334,22 @@ App::initVulkan {
       // Specify the transition to be executed in the command buffer
       vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier)
       App::endSingleTimeCommands {
-        // End the temporary command buffer and submit it to the queue
         vkEndCommandBuffer(commandBuffer)
         vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
         vkQueueWaitIdle(graphicsQueue)
-        // Free the temporary command buffer
       }
     }
     // Cleanup
     vkDestroyBuffer(device, stagingBuffer, nullptr)
     vkFreeMemory(device, stagingBufferMemory, nullptr)
   }
-  App::createTextureSampler {
-    vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler)
-  }
   App::createTextureImageView {
     App::createImageView {
       vkCreateImageView(device, &viewInfo, nullptr, &imageView)
     }
+  }
+  App::createTextureSampler {
+    vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler)
   }
   App::createVertexBuffer {
     // Create Host Visible Staging Buffer
@@ -393,18 +383,15 @@ App::initVulkan {
     // Copy Vertex Data to Staging Buffer
     App::copyBuffer {
       App::beginSingleTimeCommands {
-        // Create a temporary command buffer for one time operations
         vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
         vkBeginCommandBuffer(commandBuffer, &beginInfo)
       }
       // Copy Buffer
       vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion)
       App::endSingleTimeCommands {
-        // End the temporary command buffer and submit it to the queue
         vkEndCommandBuffer(commandBuffer)
         vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
         vkQueueWaitIdle(graphicsQueue)
-        // Free the temporary command buffer
       }
     }
     vkDestroyBuffer(device, stagingBuffer, nullptr)
@@ -442,18 +429,15 @@ App::initVulkan {
     // Copy Index Data to Staging Buffer
     App::copyBuffer {
       App::beginSingleTimeCommands {
-        // Create a temporary command buffer for one time operations
         vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer)
         vkBeginCommandBuffer(commandBuffer, &beginInfo)
       }
       // Copy Buffer
       vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion)
       App::endSingleTimeCommands {
-        // End the temporary command buffer and submit it to the queue
         vkEndCommandBuffer(commandBuffer)
         vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)
         vkQueueWaitIdle(graphicsQueue)
-        // Free the temporary command buffer
       }
     }
     vkDestroyBuffer(device, stagingBuffer, nullptr)
@@ -494,11 +478,7 @@ App::initVulkan {
   }
   App::createDescriptorSets {
     vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data())
-    // Uniform Buffer
-    // Texture Sampler
     vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr)
-    // Uniform Buffer
-    // Texture Sampler
     vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr)
   }
   App::createCommandBuffers {
@@ -589,14 +569,14 @@ App::cleanup {
     vkDestroyImageView(device, imageView, nullptr)
     vkDestroySwapchainKHR(device, swapChain, nullptr)
   }
+  vkDestroyBuffer(device, uniformBuffers[i], nullptr)
+  vkFreeMemory(device, uniformBuffersMemory[i], nullptr)
+  vkDestroyBuffer(device, uniformBuffers[i], nullptr)
+  vkFreeMemory(device, uniformBuffersMemory[i], nullptr)
   vkDestroySampler(device, textureSampler, nullptr)
   vkDestroyImageView(device, textureImageView, nullptr)
   vkDestroyImage(device, textureImage, nullptr)
   vkFreeMemory(device, textureImageMemory, nullptr)
-  vkDestroyBuffer(device, uniformBuffers[i], nullptr)
-  vkFreeMemory(device, uniformBuffersMemory[i], nullptr)
-  vkDestroyBuffer(device, uniformBuffers[i], nullptr)
-  vkFreeMemory(device, uniformBuffersMemory[i], nullptr)
   vkDestroyDescriptorPool(device, descriptorPool, nullptr)
   vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr)
   vkDestroyBuffer(device, vertexBuffer, nullptr)
