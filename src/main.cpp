@@ -1074,7 +1074,7 @@ class App {
     // Memory requirements
     LOG("Get Memory Requirements");
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+    vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
 
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -1087,23 +1087,79 @@ class App {
     }
 
     LOG("Bind Memory");
-    LOGCALL(vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0));
+    LOGCALL(vkBindBufferMemory(device, buffer, bufferMemory, 0));
   }
 
   void createVertexBuffer() {
     LOGFN;
 
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
-    createBuffer(bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexBuffer,
-                 vertexBufferMemory);
 
+    LOG("Create Host Visible Staging Buffer");
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer,
+                 stagingBufferMemory);
+
+    LOG("Copy Vertex data to Staging Buffer");
     void* data;
-    LOGCALL(vkMapMemory(device, vertexBufferMemory, 0, bufferSize, 0, &data));
+    LOGCALL(vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data));
     LOGCALL(memcpy(data, vertices.data(), (size_t)bufferSize));
-    LOGCALL(vkUnmapMemory(device, vertexBufferMemory));
+    LOGCALL(vkUnmapMemory(device, stagingBufferMemory));
 
-    LOG("Vertex Buffer Created");
+    LOG("Create Device Local Vertex Buffer");
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
+
+    LOG("Copy Vertex Data to Staging Buffer");
+    copyBuffer(stagingBuffer, vertexBuffer, bufferSize);
+
+    LOGCALL(vkDestroyBuffer(device, stagingBuffer, nullptr));
+    LOGCALL(vkFreeMemory(device, stagingBufferMemory, nullptr));
+  }
+
+  void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
+    LOGFN;
+
+    LOG("Command Buffer for Buffer Copy");
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    LOGCALL(vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer));
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    LOG("Begin Command Buffer");
+    LOGCALL(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+
+    LOG("Copy Buffer");
+    VkBufferCopy copyRegion{};
+    copyRegion.srcOffset = 0;  // Optional
+    copyRegion.dstOffset = 0;  // Optional
+    copyRegion.size = size;
+    LOGCALL(vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion));
+
+    LOG("End Command Buffer");
+    LOGCALL(vkEndCommandBuffer(commandBuffer));
+
+    LOG("Submit Command Buffer");
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    LOGCALL(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE));
+    LOGCALL(vkQueueWaitIdle(graphicsQueue));
+
+    LOG("Free Command Buffer");
+    LOGCALL(vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer));
   }
 
   uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
