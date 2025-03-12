@@ -3,6 +3,9 @@
 #include <stack>
 #include <unordered_set>
 
+constexpr bool LOG_TO_README = true;
+const char* logFileName = LOG_TO_README ? "README.md" : "log.hpp";
+
 class Logger {
  public:
   static void logFunctionEntry(const char* functionName) { instance().logFunctionEntryImpl(functionName); }
@@ -14,20 +17,24 @@ class Logger {
   }
 
  private:
-  Logger() : logFile("README.md") {
+  Logger() : logFile(logFileName) {
     if (!logFile.is_open()) {
       std::cerr << "Failed to open log file" << std::endl;
     }
 
-    logFile << "# Illiterate Vulkan" << std::endl;
-    logFile << std::endl;
-    logFile << "Vulkan tutorial unrolled." << std::endl;
-    logFile << std::endl;
-    logFile << "```cpp" << std::endl;
+    if (LOG_TO_README) {
+      logFile << "# Illiterate Vulkan" << std::endl;
+      logFile << std::endl;
+      logFile << "Vulkan tutorial unrolled." << std::endl;
+      logFile << std::endl;
+      logFile << "```cpp" << std::endl;
+    }
   }
 
   ~Logger() {
-    logFile << "```" << std::endl;
+    if (LOG_TO_README) {
+      logFile << "```" << std::endl;
+    }
     logFile.close();
   }
 

@@ -1,8 +1,3 @@
-# Illiterate Vulkan
-
-Vulkan tutorial unrolled.
-
-```cpp
 // Illiterate Vulkan!
 App::initWindow {
   glfwInit()
@@ -281,26 +276,6 @@ App::initVulkan {
     memcpy(data, pixels, static_cast<size_t>(imageSize))
     vkUnmapMemory(device, stagingBufferMemory)
     // Free Image Data
-    stbi_image_free(pixels)
-    // Create Image
-    // Use the same format as the pixels in the buffer
-    // Tiling optimal for texels accessed in a coherent pattern
-    App::createImage {
-      imageInfo.format = format
-      imageInfo.tiling = tiling
-      // No multisampling
-      imageInfo.samples = VK_SAMPLE_COUNT_1_BIT
-      // Flags can be used to specify sparse images, mipmaps, etc.
-      imageInfo.flags = 0
-      vkCreateImage(device, &imageInfo, nullptr, &image)
-      // Allocate Memory for Image
-      App::findMemoryType {
-        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties)
-      }
-      vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory)
-      // Bind Memory to Image
-      vkBindImageMemory(device, image, imageMemory, 0)
-    }
   }
   App::createVertexBuffer {
     // Create Host Visible Staging Buffer
@@ -545,13 +520,9 @@ App::cleanup {
   vkDestroyFence(device, inFlightFences[i], nullptr)
   vkDestroyCommandPool(device, commandPool, nullptr)
   vkDestroyDevice(device, nullptr)
-  // [VALIDATION ERROR] validation layer:  Validation Error: [ VUID-vkDestroyDevice-device-05137 ] Object 0: handle = 0x9fde6b0000000014, type = VK_OBJECT_TYPE_BUFFER; | MessageID = 0x4872eaa0 | vkDestroyDevice(): OBJ ERROR : For VkDevice 0x1d22efa98a0[], VkBuffer 0x9fde6b0000000014[] has not been destroyed.
+  // [VALIDATION ERROR] validation layer:  Validation Error: [ VUID-vkDestroyDevice-device-05137 ] Object 0: handle = 0x9fde6b0000000014, type = VK_OBJECT_TYPE_BUFFER; | MessageID = 0x4872eaa0 | vkDestroyDevice(): OBJ ERROR : For VkDevice 0x20ef4ef0150[], VkBuffer 0x9fde6b0000000014[] has not been destroyed.
 The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://vulkan.lunarg.com/doc/view/1.4.304.1/windows/antora/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
-  // [VALIDATION ERROR] validation layer:  Validation Error: [ VUID-vkDestroyDevice-device-05137 ] Object 0: handle = 0xd897d90000000016, type = VK_OBJECT_TYPE_IMAGE; | MessageID = 0x4872eaa0 | vkDestroyDevice(): OBJ ERROR : For VkDevice 0x1d22efa98a0[], VkImage 0xd897d90000000016[] has not been destroyed.
-The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://vulkan.lunarg.com/doc/view/1.4.304.1/windows/antora/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
-  // [VALIDATION ERROR] validation layer:  Validation Error: [ VUID-vkDestroyDevice-device-05137 ] Object 0: handle = 0xdd3a8a0000000015, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x4872eaa0 | vkDestroyDevice(): OBJ ERROR : For VkDevice 0x1d22efa98a0[], VkDeviceMemory 0xdd3a8a0000000015[] has not been destroyed.
-The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://vulkan.lunarg.com/doc/view/1.4.304.1/windows/antora/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
-  // [VALIDATION ERROR] validation layer:  Validation Error: [ VUID-vkDestroyDevice-device-05137 ] Object 0: handle = 0x84c0580000000017, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x4872eaa0 | vkDestroyDevice(): OBJ ERROR : For VkDevice 0x1d22efa98a0[], VkDeviceMemory 0x84c0580000000017[] has not been destroyed.
+  // [VALIDATION ERROR] validation layer:  Validation Error: [ VUID-vkDestroyDevice-device-05137 ] Object 0: handle = 0xdd3a8a0000000015, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x4872eaa0 | vkDestroyDevice(): OBJ ERROR : For VkDevice 0x20ef4ef0150[], VkDeviceMemory 0xdd3a8a0000000015[] has not been destroyed.
 The Vulkan spec states: All child objects created on device must have been destroyed prior to destroying device (https://vulkan.lunarg.com/doc/view/1.4.304.1/windows/antora/spec/latest/chapters/devsandqueues.html#VUID-vkDestroyDevice-device-05137)
   DestroyDebugUtilsMessengerEXT {
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT")
@@ -562,4 +533,3 @@ The Vulkan spec states: All child objects created on device must have been destr
   glfwDestroyWindow(window)
   glfwTerminate()
 }
-```
