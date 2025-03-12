@@ -80,6 +80,9 @@ App::initVulkan {
       }
     }
     // found suitable device  NVIDIA GeForce RTX 3060 Laptop GPU
+    App::getMaxUsableSampleCount {
+      vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties)
+    }
   }
   App::createLogicalDevice {
     App::findQueueFamilies {

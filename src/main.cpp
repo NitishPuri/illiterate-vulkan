@@ -145,14 +145,6 @@ struct hash<Vertex> {
 
 #pragma endregion VERTEX_DESC
 
-#pragma region UNIFORM_BUFFER
-struct UniformBufferObject {
-  alignas(16) glm::mat4 model;
-  alignas(16) glm::mat4 view;
-  alignas(16) glm::mat4 proj;
-};
-#pragma endregion UNIFORM_BUFFER
-
 #pragma region VALIDATION_CALLBACK
 
 const std::vector<const char*> validationLayers = {
@@ -387,6 +379,8 @@ class App {
   VkDeviceMemory depthImageMemory;
   VkImageView depthImageView;
 
+  VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+
   bool framebbufferResized = false;
 
   uint32_t currentFrame = 0;
@@ -587,6 +581,7 @@ class App {
         LOG("found suitable device ", deviceProperties.deviceName);
 
         physicalDevice = device;
+        msaaSamples = getMaxUsableSampleCount();
 
         break;
       }
@@ -1389,6 +1384,13 @@ class App {
 #pragma endregion VERTEX_BUFFERS
 
 #pragma region UNIFORM_BUFFERS
+
+  struct UniformBufferObject {
+    alignas(16) glm::mat4 model;
+    alignas(16) glm::mat4 view;
+    alignas(16) glm::mat4 proj;
+  };
+
   void createDescriptorSetLayout() {
     LOGFN;
 
@@ -1823,6 +1825,38 @@ class App {
     endSingleTimeCommands(commandBuffer);
   }
 #pragma endregion TEXTURE
+
+#pragma region MSAA
+  VkSampleCountFlagBits getMaxUsableSampleCount() {
+    LOGFN;
+
+    VkPhysicalDeviceProperties physicalDeviceProperties;
+    LOGCALL(vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties));
+
+    VkSampleCountFlags counts = physicalDeviceProperties.limits.framebufferColorSampleCounts &
+                                physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+    if (counts & VK_SAMPLE_COUNT_64_BIT) {
+      return VK_SAMPLE_COUNT_64_BIT;
+    }
+    if (counts & VK_SAMPLE_COUNT_32_BIT) {
+      return VK_SAMPLE_COUNT_32_BIT;
+    }
+    if (counts & VK_SAMPLE_COUNT_16_BIT) {
+      return VK_SAMPLE_COUNT_16_BIT;
+    }
+    if (counts & VK_SAMPLE_COUNT_8_BIT) {
+      return VK_SAMPLE_COUNT_8_BIT;
+    }
+    if (counts & VK_SAMPLE_COUNT_4_BIT) {
+      return VK_SAMPLE_COUNT_4_BIT;
+    }
+    if (counts & VK_SAMPLE_COUNT_2_BIT) {
+      return VK_SAMPLE_COUNT_2_BIT;
+    }
+
+    return VK_SAMPLE_COUNT_1_BIT;
+  }
+#pragma endregion MSAA
 
 #pragma region COMMAND_BUFFERS
   void createCommandPool() {
