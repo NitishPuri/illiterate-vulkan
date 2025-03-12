@@ -14,10 +14,21 @@ class Logger {
   }
 
  private:
-  Logger() : logFile("log.hpp") {
+  Logger() : logFile("README.md") {
     if (!logFile.is_open()) {
       std::cerr << "Failed to open log file" << std::endl;
     }
+
+    logFile << "# Illiterate Vulkan" << std::endl;
+    logFile << std::endl;
+    logFile << "Vulkan tutorial unrolled." << std::endl;
+    logFile << std::endl;
+    logFile << "```cpp" << std::endl;
+  }
+
+  ~Logger() {
+    logFile << "```" << std::endl;
+    logFile.close();
   }
 
   static Logger& instance() {
