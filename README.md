@@ -415,6 +415,11 @@ App::initVulkan {
   App::createTextureSampler {
     vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler)
   }
+  App::loadModel {
+    // Load Model
+    // Vertex Count in model:  4675
+    // Unique Vertex Count:  3566
+  }
   App::createVertexBuffer {
     // Create Host Visible Staging Buffer
     App::createBuffer {
@@ -588,7 +593,7 @@ App::mainLoop {
       // Bind Vertex Buffer
       vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets)
       // Bind Index Buffer
-      vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16)
+      vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32)
       // Set dynamic states
       vkCmdSetViewport(commandBuffer, 0, 1, &viewport)
       vkCmdSetScissor(commandBuffer, 0, 1, &scissor)
